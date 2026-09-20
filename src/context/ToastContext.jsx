@@ -24,30 +24,36 @@ export const ToastProvider = ({ children }) => {
   return (
     <ToastContext.Provider value={{ showToast, removeToast }}>
       {children}
-      {/* Toast Overlay Container */}
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0">
+      {/* Top-Center Floating Toast Chip Container */}
+      <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2 pointer-events-none px-4 w-auto max-w-md">
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`pointer-events-auto flex items-center justify-between p-3.5 rounded-xl shadow-lg border backdrop-blur-md transition-all duration-300 transform translate-y-0 ${
+            onClick={() => removeToast(toast.id)}
+            className={`pointer-events-auto flex items-center gap-2 py-1.5 px-3.5 rounded-full shadow-2xl backdrop-blur-xl border transition-all duration-300 select-none animate-modal-slide-down cursor-pointer hover:scale-105 active:scale-95 ${
               toast.type === 'success'
-                ? 'bg-emerald-50/95 dark:bg-emerald-950/90 text-emerald-900 dark:text-emerald-200 border-emerald-200 dark:border-emerald-800'
+                ? 'bg-zinc-950/90 text-emerald-300 border-emerald-500/40 shadow-emerald-950/50'
                 : toast.type === 'error'
-                ? 'bg-rose-50/95 dark:bg-rose-950/90 text-rose-900 dark:text-rose-200 border-rose-200 dark:border-rose-800'
-                : 'bg-indigo-50/95 dark:bg-indigo-950/90 text-indigo-900 dark:text-indigo-200 border-indigo-200 dark:border-indigo-800'
+                ? 'bg-zinc-950/90 text-rose-300 border-rose-500/40 shadow-rose-950/50'
+                : 'bg-zinc-950/90 text-amber-300 border-amber-400/40 shadow-black/60'
             }`}
           >
-            <div className="flex items-center gap-3 pr-2">
-              {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />}
-              {toast.type === 'error' && <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />}
-              {toast.type === 'info' && <Info className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />}
-              <p className="text-sm font-medium leading-snug">{toast.message}</p>
-            </div>
+            {toast.type === 'success' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 stroke-[2.5]" />}
+            {toast.type === 'error' && <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0 stroke-[2.5]" />}
+            {toast.type === 'info' && <Info className="w-3.5 h-3.5 text-amber-400 shrink-0 stroke-[2.5]" />}
+            <span className="text-[11.5px] font-bold text-white/95 tracking-tight leading-none whitespace-nowrap">
+              {toast.message}
+            </span>
             <button
-              onClick={() => removeToast(toast.id)}
-              className="p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-colors"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                removeToast(toast.id);
+              }}
+              className="ml-0.5 text-zinc-400 hover:text-white transition-colors cursor-pointer p-0.5 rounded-full"
+              title="Dismiss"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3 h-3 stroke-[2.5]" />
             </button>
           </div>
         ))}

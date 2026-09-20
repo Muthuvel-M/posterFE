@@ -32,7 +32,6 @@ export const CartProvider = ({ children }) => {
           ...updated[existingIndex],
           qty: newQty,
         };
-        showToast(`Updated "${product.name}" quantity (${newQty})`, 'info', 1500);
         return updated;
       } else {
         if (qty > product.stock) {
@@ -40,7 +39,6 @@ export const CartProvider = ({ children }) => {
           return prev;
         }
 
-        showToast(`Added "${product.name}" to cart`, 'success', 1500);
         return [
           ...prev,
           {
