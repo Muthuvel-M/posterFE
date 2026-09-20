@@ -15,12 +15,12 @@ import {
   Palette,
 } from 'lucide-react';
 import { InstagramIcon } from '../components/InstagramIcon';
+import { useCatalog } from '../context/CatalogContext';
 import { formatCurrency, formatDateTime } from '../utils/formatters';
 import { api } from '../api/client';
 
 export const HomeBento = ({
   user,
-  catalogVersion = 0,
   onNavigate,
   onOpenAddProduct,
   onOpenRawMaterial,
@@ -28,32 +28,8 @@ export const HomeBento = ({
   onOpenReceipt,
   onOpenInstagramQR,
 }) => {
-  const [products, setProducts] = useState(() => {
-    try {
-      const cached = localStorage.getItem('auraframe_cached_products');
-      return cached ? JSON.parse(cached) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [recentSales, setRecentSales] = useState(() => {
-    try {
-      const cached = localStorage.getItem('auraframe_cached_sales');
-      return cached ? JSON.parse(cached) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [todaySummary, setTodaySummary] = useState(() => {
-    try {
-      const cached = localStorage.getItem('auraframe_cached_summary');
-      return cached ? JSON.parse(cached) : { revenue: 0, profit: 0, count: 0 };
-    } catch {
-      return { revenue: 0, profit: 0, count: 0 };
-    }
-  });
+  const { products, todaySummary, recentSales, isSyncing, refreshCatalog } = useCatalog();
   const [customStats, setCustomStats] = useState({ total: 0, inProduction: 0, readyForPickup: 0 });
-  const [loading, setLoading] = useState(false);
 
   // Dynamic time-based greeting
   const getGreeting = () => {
@@ -63,43 +39,8 @@ export const HomeBento = ({
     return 'GOOD EVENING';
   };
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, [catalogVersion]);
-
-  const fetchDashboardData = async () => {
-    try {
-      const [prodsRes, analyticsRes, customRes] = await Promise.all([
-        api.getProducts({ active: 'true' }).catch(() => ({ data: [] })),
-        api.getAnalytics({ timeframe: 'today' }).catch(() => ({ data: {} })),
-        api.getCustomOrderStats().catch(() => ({ data: {} })),
-      ]);
-
-      if (prodsRes?.data) {
-        setProducts(prodsRes.data);
-        localStorage.setItem('auraframe_cached_products', JSON.stringify(prodsRes.data));
-      }
-      if (customRes?.data) setCustomStats(customRes.data);
-      if (analyticsRes?.data) {
-        setRecentSales(analyticsRes.data.recentSales || []);
-        localStorage.setItem('auraframe_cached_sales', JSON.stringify(analyticsRes.data.recentSales || []));
-        const summary = {
-          revenue: analyticsRes.data.summary?.totalRevenue || 0,
-          profit: analyticsRes.data.summary?.totalProfit || 0,
-          count: analyticsRes.data.summary?.orderCount || 0,
-        };
-        setTodaySummary(summary);
-        localStorage.setItem('auraframe_cached_summary', JSON.stringify(summary));
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const activeProductsCount = products.length;
-  const lowStockCount = products.filter((p) => p.stock <= p.lowStockThreshold).length;
+  const lowStockCount = products.filter((p) => (p.stock || 0) <= (p.lowStockThreshold ?? 10)).length;
 
   const userName = user?.name || 'Muthuvel M';
 

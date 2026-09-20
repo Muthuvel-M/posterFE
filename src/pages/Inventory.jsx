@@ -9,58 +9,36 @@ import {
   PackagePlus,
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
+import { useCatalog } from '../context/CatalogContext';
 import { RestockModal } from '../components/RestockModal';
 import { ProductModal } from '../components/ProductModal';
 import { formatCurrency } from '../utils/formatters';
 import { api } from '../api/client';
 
-export const Inventory = ({ catalogVersion }) => {
+export const Inventory = () => {
   const { showToast } = useToast();
+  const {
+    products,
+    updateProductLocally,
+    deleteProductLocally,
+    isSyncing,
+    refreshCatalog,
+  } = useCatalog();
 
-  const [products, setProducts] = useState(() => {
-    try {
-      const cached = localStorage.getItem('auraframe_cached_products');
-      return cached ? JSON.parse(cached) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [loading, setLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState('poster'); // 'poster' | 'frame'
   const [selectedProductForRestock, setSelectedProductForRestock] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-
-  useEffect(() => {
-    fetchInventory();
-  }, [catalogVersion]);
-
-  const fetchInventory = async () => {
-    try {
-      if (products.length === 0) setLoading(true);
-      const res = await api.getProducts({ active: 'all' });
-      if (res.success && Array.isArray(res.data)) {
-        setProducts(res.data);
-        localStorage.setItem('auraframe_cached_products', JSON.stringify(res.data));
-      }
-    } catch (error) {
-      if (products.length === 0) {
-        showToast('Failed to load inventory', 'error');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleDelete = async (prod, e) => {
     e.stopPropagation();
     if (!window.confirm(`Delete "${prod.name}" from catalog?`)) return;
 
     try {
+      deleteProductLocally(prod._id);
       const res = await api.deleteProduct(prod._id);
       if (res.success) {
         showToast(`Product "${prod.name}" removed`, 'success');
-        setProducts((prev) => prev.filter((c) => c._id !== prod._id));
       }
     } catch (err) {
       showToast(err.message || 'Failed to delete product', 'error');
@@ -68,19 +46,11 @@ export const Inventory = ({ catalogVersion }) => {
   };
 
   const handleRestockSuccess = (updated) => {
-    setProducts((prev) => prev.map((p) => (p._id === updated._id ? updated : p)));
+    updateProductLocally(updated);
   };
 
   const handleProductSaved = (saved) => {
-    setProducts((prev) => {
-      const idx = prev.findIndex((p) => p._id === saved._id);
-      if (idx > -1) {
-        const copy = [...prev];
-        copy[idx] = saved;
-        return copy;
-      }
-      return [saved, ...prev];
-    });
+    updateProductLocally(saved);
   };
 
   // Filtered Products by category ('poster', 'frame', 'sticker')

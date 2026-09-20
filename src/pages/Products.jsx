@@ -14,38 +14,26 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
+import { useCatalog } from '../context/CatalogContext';
 import { ProductModal } from '../components/ProductModal';
 import { formatCurrency } from '../utils/formatters';
 import { api } from '../api/client';
 
-export const Products = ({ onNavigate, catalogVersion = 0 }) => {
+export const Products = ({ onNavigate }) => {
   const { showToast } = useToast();
+  const {
+    products,
+    updateProductLocally,
+    deleteProductLocally,
+    isSyncing,
+    refreshCatalog,
+  } = useCatalog();
 
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [sizeFilter, setSizeFilter] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
-
-  useEffect(() => {
-    fetchProducts();
-  }, [catalogVersion]);
-
-  const fetchProducts = async () => {
-    try {
-      setLoading(true);
-      const res = await api.getProducts({ active: 'all' });
-      if (res.success) {
-        setProducts(res.data);
-      }
-    } catch (error) {
-      showToast('Failed to load products', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleOpenAddModal = () => {
     setEditingProduct(null);
@@ -58,25 +46,18 @@ export const Products = ({ onNavigate, catalogVersion = 0 }) => {
   };
 
   const handleSaveSuccess = (savedProd) => {
-    setProducts((prev) => {
-      const exists = prev.some((p) => p._id === savedProd._id);
-      if (exists) {
-        return prev.map((p) => (p._id === savedProd._id ? savedProd : p));
-      }
-      return [savedProd, ...prev];
-    });
+    updateProductLocally(savedProd);
   };
 
   const handleToggleActive = async (product) => {
     try {
+      const updated = { ...product, active: !product.active };
+      updateProductLocally(updated);
       const res = await api.updateProduct(product._id, { active: !product.active });
       if (res.success) {
         showToast(
           `Product "${product.name}" ${!product.active ? 'activated' : 'deactivated'}`,
           'info'
-        );
-        setProducts((prev) =>
-          prev.map((p) => (p._id === product._id ? { ...p, active: !p.active } : p))
         );
       }
     } catch (error) {
@@ -88,10 +69,10 @@ export const Products = ({ onNavigate, catalogVersion = 0 }) => {
     if (!window.confirm(`Are you sure you want to delete "${product.name}"?`)) return;
 
     try {
+      deleteProductLocally(product._id);
       const res = await api.deleteProduct(product._id);
       if (res.success) {
         showToast(`Product "${product.name}" deleted`, 'success');
-        setProducts((prev) => prev.filter((p) => p._id !== product._id));
       }
     } catch (error) {
       showToast(error.message || 'Failed to delete product', 'error');

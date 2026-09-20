@@ -14,6 +14,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useCatalog } from '../context/CatalogContext';
 import { useToast } from '../context/ToastContext';
 import { useModalAnimation } from '../hooks/useModalAnimation';
 import { formatCurrency, generateWhatsAppReceiptUrl } from '../utils/formatters';
@@ -32,6 +33,7 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
     clearCart,
     showReceipt,
   } = useCart();
+  const { deductStockForSale } = useCatalog();
   const { showToast } = useToast();
   const { shouldRender, isClosing, requestClose } = useModalAnimation(isPayModalOpen, closePayModal);
 
@@ -97,9 +99,12 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
       });
     } catch (e) {}
 
+    // Deduct stock and update sales metrics locally with 0ms latency
+    deductStockForSale(completedSale);
+
     setCompletedSaleData(completedSale);
     setIsSuccessView(true);
-    if (onSaleSuccess) onSaleSuccess();
+    if (onSaleSuccess) onSaleSuccess(completedSale);
   };
 
   // "Payment Received" button handler: marks paid, decrements stock atomically

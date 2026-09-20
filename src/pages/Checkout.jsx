@@ -15,12 +15,12 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useCatalog } from '../context/CatalogContext';
 import { useToast } from '../context/ToastContext';
 import { formatCurrency } from '../utils/formatters';
 import { api } from '../api/client';
 
 export const Checkout = ({
-  catalogVersion,
   customers = [],
   onCustomerCreated,
   onOpenAddProduct,
@@ -41,19 +41,11 @@ export const Checkout = ({
     openPayModal,
   } = useCart();
 
+  const { products, isSyncing, refreshCatalog } = useCatalog();
   const { showToast } = useToast();
 
   // Wizard Steps
   const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [products, setProducts] = useState(() => {
-    try {
-      const cached = localStorage.getItem('auraframe_cached_products');
-      return cached ? JSON.parse(cached) : [];
-    } catch {
-      return [];
-    }
-  });
   const [categoryFilter, setCategoryFilter] = useState('poster'); // 'poster' | 'frame' | 'sticker' | 'all'
 
   // Step 2 Form States
@@ -63,33 +55,11 @@ export const Checkout = ({
   const [discountValue, setDiscountValue] = useState(discount ? String(discount) : '');
 
   useEffect(() => {
-    fetchProducts();
-  }, [catalogVersion]);
-
-  useEffect(() => {
     if (customer) {
       setCustName(customer.name || '');
       setCustPhone(customer.phone || '');
     }
   }, [customer]);
-
-  const fetchProducts = async () => {
-    try {
-      if (products.length === 0) setLoading(true);
-      const res = await api.getProducts({ active: 'true' });
-      if (res.success && Array.isArray(res.data)) {
-        setProducts(res.data);
-        localStorage.setItem('auraframe_cached_products', JSON.stringify(res.data));
-      }
-    } catch (error) {
-      // Don't show toast if we already have cached products displayed
-      if (products.length === 0) {
-        showToast('Connecting to catalog...', 'info', 1500);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const getCartItemQty = (productId) => {
     const found = cartItems.find((item) => item.product._id === productId);

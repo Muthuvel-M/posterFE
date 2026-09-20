@@ -1,8 +1,9 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
 import { CartProvider, useCart } from './context/CartContext';
+import { CatalogProvider, useCatalog } from './context/CatalogContext';
 import { BottomNav } from './components/BottomNav';
 import { PayModal } from './components/PayModal';
 import { ReceiptModal } from './components/ReceiptModal';
@@ -10,7 +11,6 @@ import { Login } from './pages/Login';
 import { HomeBento } from './pages/HomeBento';
 import { Checkout } from './pages/Checkout';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { api } from './api/client';
 
 // Lazy load secondary pages for ultra-lightweight initial mobile bundle
 const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
@@ -38,69 +38,13 @@ const PageLoadingFallback = () => (
 const MainLayout = () => {
   const { user, isAuthenticated, loading } = useAuth();
   const { showReceipt } = useCart();
+  const { settings, customers, updateSettingsLocally, addCustomerLocally, updateProductLocally, refreshCatalog } = useCatalog();
 
   const [activeTab, setActiveTab] = useState('home'); // Home Bento as default
-  const [settings, setSettings] = useState(() => {
-    try {
-      const cached = localStorage.getItem('auraframe_cached_settings');
-      return cached ? JSON.parse(cached) : null;
-    } catch {
-      return null;
-    }
-  });
-  const [customers, setCustomers] = useState(() => {
-    try {
-      const cached = localStorage.getItem('auraframe_cached_customers');
-      return cached ? JSON.parse(cached) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [catalogVersion, setCatalogVersion] = useState(0);
   const [isInstantQROpen, setIsInstantQROpen] = useState(false);
   const [isInstagramQROpen, setIsInstagramQROpen] = useState(false);
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [isRawMaterialOpen, setIsRawMaterialOpen] = useState(false);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadInitialAppData();
-    }
-  }, [isAuthenticated]);
-
-  const loadInitialAppData = async () => {
-    try {
-      const [settingsRes, custRes] = await Promise.all([
-        api.getSettings().catch(() => ({})),
-        api.getCustomers().catch(() => ({})),
-      ]);
-
-      if (settingsRes?.data) {
-        setSettings(settingsRes.data);
-        localStorage.setItem('auraframe_cached_settings', JSON.stringify(settingsRes.data));
-      }
-      if (custRes?.data) {
-        setCustomers(custRes.data);
-        localStorage.setItem('auraframe_cached_customers', JSON.stringify(custRes.data));
-      }
-      setCatalogVersion((prev) => prev + 1);
-    } catch (err) {
-      console.error('App init data error:', err);
-    }
-  };
-
-  const handleCustomerCreated = (newCust) => {
-    setCustomers((prev) => {
-      const next = [newCust, ...prev];
-      localStorage.setItem('auraframe_cached_customers', JSON.stringify(next));
-      return next;
-    });
-  };
-
-  const handleProductSaved = () => {
-    setCatalogVersion((prev) => prev + 1);
-    loadInitialAppData();
-  };
 
   if (loading) {
     return (
@@ -126,7 +70,6 @@ const MainLayout = () => {
             {activeTab === 'home' && (
               <HomeBento
                 user={user}
-                catalogVersion={catalogVersion}
                 onNavigate={(tab) => setActiveTab(tab)}
                 onOpenAddProduct={() => setIsAddProductOpen(true)}
                 onOpenRawMaterial={() => setIsRawMaterialOpen(true)}
@@ -137,9 +80,8 @@ const MainLayout = () => {
             )}
             {activeTab === 'checkout' && (
               <Checkout
-                catalogVersion={catalogVersion}
                 customers={customers}
-                onCustomerCreated={handleCustomerCreated}
+                onCustomerCreated={addCustomerLocally}
                 onOpenAddProduct={() => setIsAddProductOpen(true)}
               />
             )}
@@ -151,8 +93,7 @@ const MainLayout = () => {
             {activeTab === 'inventory' && (
               <Suspense fallback={<PageLoadingFallback />}>
                 <Inventory
-                  catalogVersion={catalogVersion}
-                  onProductUpdated={handleProductSaved}
+                  onProductUpdated={updateProductLocally}
                   onNavigateToProducts={() => setActiveTab('products')}
                   onOpenAddProduct={() => setIsAddProductOpen(true)}
                 />
@@ -161,7 +102,6 @@ const MainLayout = () => {
             {activeTab === 'products' && (
               <Suspense fallback={<PageLoadingFallback />}>
                 <Products
-                  catalogVersion={catalogVersion}
                   onNavigate={(tab) => setActiveTab(tab)}
                 />
               </Suspense>
@@ -188,10 +128,7 @@ const MainLayout = () => {
                 <Settings
                   user={user}
                   settings={settings}
-                  onSettingsUpdated={(newSet) => {
-                    setSettings(newSet);
-                    localStorage.setItem('auraframe_cached_settings', JSON.stringify(newSet));
-                  }}
+                  onSettingsUpdated={updateSettingsLocally}
                   onNavigate={(tab) => setActiveTab(tab)}
                 />
               </Suspense>
@@ -208,7 +145,7 @@ const MainLayout = () => {
       {/* Global Modals */}
       <PayModal
         settings={settings}
-        onSaleSuccess={handleProductSaved}
+        onSaleSuccess={() => {}}
         onNavigate={(tab) => setActiveTab(tab)}
       />
       <ReceiptModal settings={settings} />
@@ -233,17 +170,14 @@ const MainLayout = () => {
           <ProductModal
             isOpen={isAddProductOpen}
             onClose={() => setIsAddProductOpen(false)}
-            onSaveSuccess={handleProductSaved}
+            onSaveSuccess={updateProductLocally}
           />
         )}
         {isRawMaterialOpen && (
           <RawMaterialModal
             isOpen={isRawMaterialOpen}
             onClose={() => setIsRawMaterialOpen(false)}
-            onSaveSuccess={() => {
-              setCatalogVersion((prev) => prev + 1);
-              loadInitialAppData();
-            }}
+            onSaveSuccess={() => refreshCatalog(true)}
           />
         )}
       </Suspense>
@@ -262,9 +196,11 @@ export default function App() {
     <ThemeProvider>
       <ToastProvider>
         <AuthProvider>
-          <CartProvider>
-            <MainLayout />
-          </CartProvider>
+          <CatalogProvider>
+            <CartProvider>
+              <MainLayout />
+            </CartProvider>
+          </CatalogProvider>
         </AuthProvider>
       </ToastProvider>
     </ThemeProvider>
