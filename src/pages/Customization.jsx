@@ -157,7 +157,7 @@ export const Customization = ({ onNavigate }) => {
     const cleanPhone = phone.length === 10 ? `91${phone}` : phone.startsWith('91') ? phone : `91${phone}`;
     const custName = order.customerSnapshot?.name || order.customer?.name || 'Customer';
     const text = encodeURIComponent(
-      `Hello ${custName}! Regarding your AuraFrame custom order (${order.orderNumber || ''} - "${order.title || 'Custom Frame'}"): Your order status is currently "${(order.orderStatus || '').toUpperCase()}". Remaining balance due: ₹${order.pricing?.balanceDue || 0}. Thank you!`
+      `Hello ${custName}! Regarding your AuraFrame custom order (${order.orderNumber || ''} - "${order.title || 'Custom Order'}"): Your order status is currently "${(order.orderStatus || '').toUpperCase()}". Remaining balance due: ₹${order.pricing?.balanceDue || 0}. Thank you!`
     );
     window.open(`https://wa.me/${cleanPhone}?text=${text}`, '_blank');
   };
@@ -195,11 +195,26 @@ export const Customization = ({ onNavigate }) => {
     }
   };
 
-  const formatDueDate = (dateInput) => {
+  const getItemTypeBadge = (type) => {
+    switch (type) {
+      case 'custom_framed_poster':
+        return { label: '🖼️ Framed Print', color: 'bg-amber-400/10 text-amber-300 border-amber-400/30' };
+      case 'custom_poster':
+        return { label: '🎨 Poster', color: 'bg-blue-400/10 text-blue-300 border-blue-400/30' };
+      case 'custom_frame':
+        return { label: '🔲 Frame', color: 'bg-purple-400/10 text-purple-300 border-purple-400/30' };
+      case 'custom_sticker':
+        return { label: '✨ Stickers', color: 'bg-pink-400/10 text-pink-300 border-pink-400/30' };
+      default:
+        return { label: '🖼️ Print', color: 'bg-zinc-800 text-zinc-300 border-zinc-700' };
+    }
+  };
+
+  const formatDateOnly = (dateInput) => {
     if (!dateInput) return null;
     const d = new Date(dateInput);
     if (isNaN(d.getTime())) return null;
-    return d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+    return d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   return (
@@ -232,7 +247,7 @@ export const Customization = ({ onNavigate }) => {
           </div>
         </div>
 
-        {/* <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <button
             onClick={fetchOrdersAndStats}
             className="p-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer border border-zinc-800 shadow-sm"
@@ -248,7 +263,7 @@ export const Customization = ({ onNavigate }) => {
             <Plus className="w-4 h-4 stroke-[3]" />
             <span>New Custom Order</span>
           </button>
-        </div> */}
+        </div>
       </div>
 
       {/* KPI Metrics Banner */}
@@ -302,10 +317,11 @@ export const Customization = ({ onNavigate }) => {
             <button
               key={tab.id}
               onClick={() => setStatusFilter(tab.id)}
-              className={`py-2 px-3.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${statusFilter === tab.id
-                ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
-                : 'bg-[#151518] text-zinc-400 border border-zinc-800 hover:text-white'
-                }`}
+              className={`py-2 px-3.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${
+                statusFilter === tab.id
+                  ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
+                  : 'bg-[#151518] text-zinc-400 border border-zinc-800 hover:text-white'
+              }`}
             >
               {tab.label}
             </button>
@@ -327,7 +343,7 @@ export const Customization = ({ onNavigate }) => {
             <div>
               <p className="text-sm font-bold text-zinc-300">No custom orders found</p>
               <p className="text-xs text-zinc-500 mt-0.5">
-                Collect custom photo & framing details from your customers
+                Collect custom size tiers, individual prices & delivery dates from your customers
               </p>
             </div>
             <button
@@ -344,24 +360,29 @@ export const Customization = ({ onNavigate }) => {
             const balanceDue = order?.pricing?.balanceDue || 0;
             const custName = order?.customerSnapshot?.name || order?.customer?.name || 'Walk-in Customer';
             const custPhone = order?.customerSnapshot?.phone || order?.customer?.phone || '';
-            const sizeLabel = order?.dimensions?.sizeType || 'A4';
 
-            const getItemTypeBadge = (type) => {
-              switch (type) {
-                case 'custom_framed_poster':
-                  return { label: '🖼️ Framed Print', color: 'bg-amber-400/10 text-amber-300 border-amber-400/30' };
-                case 'custom_poster':
-                  return { label: '🎨 Poster Only', color: 'bg-blue-400/10 text-blue-300 border-blue-400/30' };
-                case 'custom_frame':
-                  return { label: '🔲 Frame Only', color: 'bg-purple-400/10 text-purple-300 border-purple-400/30' };
-                case 'custom_sticker':
-                  return { label: '✨ Stickers', color: 'bg-pink-400/10 text-pink-300 border-pink-400/30' };
-                default:
-                  return { label: '🖼️ Framed Print', color: 'bg-zinc-800 text-zinc-300 border-zinc-700' };
-              }
-            };
+            // Multi-selected item types list
+            const rawTypes =
+              Array.isArray(order?.itemTypes) && order.itemTypes.length > 0
+                ? order.itemTypes
+                : [order?.itemType || 'custom_framed_poster'];
 
-            const itemTypeInfo = getItemTypeBadge(order?.itemType);
+            // Size tiers list
+            const sizeTiersList =
+              Array.isArray(order?.sizeTiers) && order.sizeTiers.length > 0
+                ? order.sizeTiers
+                : [
+                    {
+                      size: order?.dimensions?.sizeType || 'A4',
+                      count: 1,
+                      unitPrice: order?.pricing?.totalPrice || 150,
+                    },
+                  ];
+
+            const totalUnits = sizeTiersList.reduce((acc, c) => acc + (Number(c.count) || 1), 0);
+
+            const placedDate = formatDateOnly(order?.orderDate || order?.createdAt);
+            const deliveryDate = formatDateOnly(order?.deliveryDate || order?.dueDate);
 
             return (
               <div
@@ -369,7 +390,7 @@ export const Customization = ({ onNavigate }) => {
                 style={{ animationDelay: `${70 + idx * 30}ms` }}
                 className="p-4 sm:p-5 rounded-3xl bg-[#16161b] border border-zinc-800/80 hover:border-zinc-700 transition-all shadow-lg animate-card-in space-y-3"
               >
-                {/* Row 1: Header - Order ID, Status, Date */}
+                {/* Row 1: Header - Order ID, Status, Placed Date & Delivery Date */}
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/60 pb-3">
                   <div className="flex items-center gap-2">
                     <span className="px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-700 font-mono text-xs font-black text-amber-300">
@@ -382,18 +403,28 @@ export const Customization = ({ onNavigate }) => {
                     </span>
                   </div>
 
-                  {order?.createdAt && (
-                    <span className="text-[11px] font-medium text-zinc-400 flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-zinc-500" />
-                      <span>{formatDateTime(order.createdAt)}</span>
-                    </span>
-                  )}
+                  {/* Dates Row: Placed & Delivery */}
+                  <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium text-zinc-400">
+                    {placedDate && (
+                      <span className="flex items-center gap-1 text-zinc-400">
+                        <Clock className="w-3.5 h-3.5 text-zinc-500" />
+                        <span>Placed: <strong className="text-zinc-200">{placedDate}</strong></span>
+                      </span>
+                    )}
+
+                    {deliveryDate && (
+                      <span className="flex items-center gap-1 text-amber-300 bg-amber-400/10 px-2 py-0.5 rounded-lg border border-amber-400/20 font-bold">
+                        <Truck className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Delivery: {deliveryDate}</span>
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                {/* Row 2: Customer, Item Type, Size & Pricing */}
+                {/* Row 2: Customer, Multi-Item Types, Size Tiers Breakdown & Pricing */}
                 <div className="flex flex-col sm:flex-row gap-4 items-start justify-between">
-                  {/* Customer Info & Order Details */}
-                  <div className="flex-1 min-w-0 space-y-2">
+                  {/* Left Column: Customer & Specifications */}
+                  <div className="flex-1 min-w-0 space-y-2.5">
                     {/* Customer Name & WhatsApp */}
                     <div className="flex flex-wrap items-center gap-2 text-xs">
                       <span className="text-sm sm:text-base font-black text-white">{custName}</span>
@@ -414,17 +445,46 @@ export const Customization = ({ onNavigate }) => {
                       )}
                     </div>
 
-                    {/* Item Type & Size Chips */}
+                    {/* Multi-Item Types Badges */}
                     <div className="flex flex-wrap gap-1.5 items-center">
-                      <span
-                        className={`px-2.5 py-1 rounded-xl text-xs font-bold border ${itemTypeInfo.color}`}
-                      >
-                        {itemTypeInfo.label}
+                      {rawTypes.map((t, i) => {
+                        const typeInfo = getItemTypeBadge(t);
+                        return (
+                          <span
+                            key={i}
+                            className={`px-2.5 py-0.5 rounded-xl text-[11px] font-bold border ${typeInfo.color}`}
+                          >
+                            {typeInfo.label}
+                          </span>
+                        );
+                      })}
+                      <span className="text-[10px] text-zinc-500 font-semibold font-mono">
+                        ({totalUnits} {totalUnits === 1 ? 'unit' : 'units'})
                       </span>
+                    </div>
 
-                      <span className="px-2.5 py-1 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-extrabold text-amber-300 uppercase">
-                        Size: {sizeLabel}
+                    {/* Size Tiers Breakdown (Count & Unit Prices) */}
+                    <div className="space-y-1">
+                      <span className="text-[10px] uppercase font-bold text-zinc-500 block">
+                        Size Tiers & Rates:
                       </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {sizeTiersList.map((st, i) => (
+                          <div
+                            key={i}
+                            className="px-2.5 py-1 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center gap-1.5 text-xs font-bold"
+                          >
+                            <span className="text-amber-400 font-mono font-black">{st.count || 1}×</span>
+                            <span className="text-white uppercase">{st.size || 'A4'}</span>
+                            <span className="text-zinc-400 font-normal text-[11px]">
+                              @ ₹{st.unitPrice || 0}
+                            </span>
+                            <span className="text-emerald-400 font-mono font-bold text-[11px]">
+                              = ₹{(Number(st.count) || 1) * (Number(st.unitPrice) || 0)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
 
                     {/* Custom Notes */}
@@ -435,17 +495,23 @@ export const Customization = ({ onNavigate }) => {
                     )}
                   </div>
 
-                  {/* Pricing Column */}
-                  <div className="text-left sm:text-right shrink-0 space-y-0.5 border-t sm:border-t-0 pt-2 sm:pt-0 w-full sm:w-auto bg-zinc-950/60 sm:bg-transparent p-3 sm:p-0 rounded-2xl border sm:border-0 border-zinc-800/60">
-                    <div className="text-base sm:text-lg font-black text-white">
-                      {formatCurrency(order?.pricing?.totalPrice || 0)}
+                  {/* Right Column: Pricing Summary Card */}
+                  <div className="text-left sm:text-right shrink-0 space-y-1 border-t sm:border-t-0 pt-2 sm:pt-0 w-full sm:w-auto bg-zinc-950/60 sm:bg-transparent p-3 sm:p-0 rounded-2xl border sm:border-0 border-zinc-800/60">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-zinc-500 block">Total Quoted</span>
+                      <div className="text-lg sm:text-xl font-black text-amber-300">
+                        {formatCurrency(order?.pricing?.totalPrice || 0)}
+                      </div>
                     </div>
+
                     <div className="text-xs text-emerald-400 font-semibold">
                       Advance: {formatCurrency(order?.pricing?.advancePaid || 0)}
                     </div>
+
                     <div
-                      className={`text-xs font-black ${balanceDue > 0 ? 'text-rose-400' : 'text-emerald-400'
-                        }`}
+                      className={`text-xs font-black ${
+                        balanceDue > 0 ? 'text-rose-400' : 'text-emerald-400'
+                      }`}
                     >
                       {balanceDue > 0 ? `Due: ₹${balanceDue}` : 'Fully Paid ✓'}
                     </div>
@@ -506,6 +572,9 @@ export const Customization = ({ onNavigate }) => {
           <div className="w-6 h-6 rounded-full bg-zinc-950 text-amber-300 flex items-center justify-center group-hover:rotate-90 transition-transform duration-300 shadow-md">
             <Plus className="w-4 h-4 stroke-[3.5]" />
           </div>
+          <span className="hidden sm:inline font-black uppercase tracking-wider text-xs">
+            New Custom Order
+          </span>
         </button>
       </div>
     </div>
