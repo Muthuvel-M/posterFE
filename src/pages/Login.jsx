@@ -78,14 +78,25 @@ export const Login = () => {
 
   const handleGoogleSignInClick = () => {
     if (!googleClientId) {
-      showToast('Please sign in using your email and password below.', 'info');
+      showToast('Google Client ID not configured. Please use email & password.', 'info');
       return;
     }
 
     if (window.google?.accounts?.id) {
       try {
         window.google.accounts.id.prompt((notification) => {
-          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          if (notification.isNotDisplayed()) {
+            const reason = notification.getNotDisplayedReason ? notification.getNotDisplayedReason() : 'unauthorized_origin';
+            if (reason === 'opt_out_or_no_session' || reason === 'suppressed_by_user') {
+              showToast('Please sign in using your email and password below.', 'info');
+            } else {
+              showToast(
+                'Google Sign-In: Origin not whitelisted in Google Cloud Console. Please use Email & Password.',
+                'error',
+                4000
+              );
+            }
+          } else if (notification.isSkippedMoment()) {
             showToast('Google Sign-in prompt was closed. Please use email & password.', 'info');
           }
         });
@@ -93,7 +104,7 @@ export const Login = () => {
         showToast('Please enter your email and password below.', 'info');
       }
     } else {
-      showToast('Please enter your email and password below.', 'info');
+      showToast('Google Sign-In is still loading. Please use email and password.', 'info');
     }
   };
 
