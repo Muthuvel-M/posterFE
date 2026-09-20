@@ -64,7 +64,7 @@ const MainLayout = () => {
   return (
     <div className="min-h-screen bg-[#0c0c0e] text-slate-100 flex flex-col selection:bg-amber-400 selection:text-black">
       {/* Main Screen Router */}
-      <main className="flex-1 w-full pt-4 sm:pt-6">
+      <main className="flex-1 w-full pt-6 sm:pt-6">
         <ErrorBoundary onNavigateHome={() => setActiveTab('home')}>
           <div key={activeTab} className="animate-tab-slide">
             {activeTab === 'home' && (
@@ -145,7 +145,7 @@ const MainLayout = () => {
       {/* Global Modals */}
       <PayModal
         settings={settings}
-        onSaleSuccess={() => {}}
+        onSaleSuccess={() => { }}
         onNavigate={(tab) => setActiveTab(tab)}
       />
       <ReceiptModal settings={settings} />
