@@ -14,11 +14,18 @@ import { ProductModal } from '../components/ProductModal';
 import { formatCurrency } from '../utils/formatters';
 import { api } from '../api/client';
 
-export const Inventory = () => {
+export const Inventory = ({ catalogVersion }) => {
   const { showToast } = useToast();
 
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState(() => {
+    try {
+      const cached = localStorage.getItem('auraframe_cached_products');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [loading, setLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState('poster'); // 'poster' | 'frame'
   const [selectedProductForRestock, setSelectedProductForRestock] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -26,17 +33,20 @@ export const Inventory = () => {
 
   useEffect(() => {
     fetchInventory();
-  }, []);
+  }, [catalogVersion]);
 
   const fetchInventory = async () => {
     try {
-      setLoading(true);
+      if (products.length === 0) setLoading(true);
       const res = await api.getProducts({ active: 'all' });
-      if (res.success) {
+      if (res.success && Array.isArray(res.data)) {
         setProducts(res.data);
+        localStorage.setItem('auraframe_cached_products', JSON.stringify(res.data));
       }
     } catch (error) {
-      showToast('Failed to load inventory', 'error');
+      if (products.length === 0) {
+        showToast('Failed to load inventory', 'error');
+      }
     } finally {
       setLoading(false);
     }
@@ -203,7 +213,7 @@ export const Inventory = () => {
 
                   <div className="w-11 h-11 rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800 shrink-0 flex items-center justify-center">
                     {p.image ? (
-                      <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                      <img src={p.image} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                     ) : (
                       <Package className="w-5 h-5 text-zinc-500" />
                     )}

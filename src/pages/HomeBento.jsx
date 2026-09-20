@@ -27,11 +27,32 @@ export const HomeBento = ({
   onOpenReceipt,
   onOpenInstagramQR,
 }) => {
-  const [products, setProducts] = useState([]);
-  const [recentSales, setRecentSales] = useState([]);
-  const [todaySummary, setTodaySummary] = useState({ revenue: 0, profit: 0, count: 0 });
+  const [products, setProducts] = useState(() => {
+    try {
+      const cached = localStorage.getItem('auraframe_cached_products');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [recentSales, setRecentSales] = useState(() => {
+    try {
+      const cached = localStorage.getItem('auraframe_cached_sales');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [todaySummary, setTodaySummary] = useState(() => {
+    try {
+      const cached = localStorage.getItem('auraframe_cached_summary');
+      return cached ? JSON.parse(cached) : { revenue: 0, profit: 0, count: 0 };
+    } catch {
+      return { revenue: 0, profit: 0, count: 0 };
+    }
+  });
   const [customStats, setCustomStats] = useState({ total: 0, inProduction: 0, readyForPickup: 0 });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // Dynamic time-based greeting
   const getGreeting = () => {
@@ -43,26 +64,31 @@ export const HomeBento = ({
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [catalogVersion]);
 
   const fetchDashboardData = async () => {
     try {
-      setLoading(true);
       const [prodsRes, analyticsRes, customRes] = await Promise.all([
         api.getProducts({ active: 'true' }).catch(() => ({ data: [] })),
         api.getAnalytics({ timeframe: 'today' }).catch(() => ({ data: {} })),
         api.getCustomOrderStats().catch(() => ({ data: {} })),
       ]);
 
-      if (prodsRes?.data) setProducts(prodsRes.data);
+      if (prodsRes?.data) {
+        setProducts(prodsRes.data);
+        localStorage.setItem('auraframe_cached_products', JSON.stringify(prodsRes.data));
+      }
       if (customRes?.data) setCustomStats(customRes.data);
       if (analyticsRes?.data) {
         setRecentSales(analyticsRes.data.recentSales || []);
-        setTodaySummary({
+        localStorage.setItem('auraframe_cached_sales', JSON.stringify(analyticsRes.data.recentSales || []));
+        const summary = {
           revenue: analyticsRes.data.summary?.totalRevenue || 0,
           profit: analyticsRes.data.summary?.totalProfit || 0,
           count: analyticsRes.data.summary?.orderCount || 0,
-        });
+        };
+        setTodaySummary(summary);
+        localStorage.setItem('auraframe_cached_summary', JSON.stringify(summary));
       }
     } catch (err) {
       console.error(err);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
@@ -6,30 +6,56 @@ import { CartProvider, useCart } from './context/CartContext';
 import { BottomNav } from './components/BottomNav';
 import { PayModal } from './components/PayModal';
 import { ReceiptModal } from './components/ReceiptModal';
-import { InstantQRModal } from './components/InstantQRModal';
-import { InstagramQRModal } from './components/InstagramQRModal';
-import { ProductModal } from './components/ProductModal';
-import { RawMaterialModal } from './components/RawMaterialModal';
 import { Login } from './pages/Login';
 import { HomeBento } from './pages/HomeBento';
 import { Checkout } from './pages/Checkout';
-import { Dashboard } from './pages/Dashboard';
-import { Inventory } from './pages/Inventory';
-import { Products } from './pages/Products';
-import { Customers } from './pages/Customers';
-import { SalesHistory } from './pages/SalesHistory';
-import { Settings } from './pages/Settings';
-import { Customization } from './pages/Customization';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { api } from './api/client';
+
+// Lazy load secondary pages for ultra-lightweight initial mobile bundle
+const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
+const Inventory = lazy(() => import('./pages/Inventory').then(m => ({ default: m.Inventory })));
+const Products = lazy(() => import('./pages/Products').then(m => ({ default: m.Products })));
+const Customers = lazy(() => import('./pages/Customers').then(m => ({ default: m.Customers })));
+const SalesHistory = lazy(() => import('./pages/SalesHistory').then(m => ({ default: m.SalesHistory })));
+const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
+const Customization = lazy(() => import('./pages/Customization').then(m => ({ default: m.Customization })));
+
+// Lazy load conditional dialogs
+const InstantQRModal = lazy(() => import('./components/InstantQRModal').then(m => ({ default: m.InstantQRModal })));
+const InstagramQRModal = lazy(() => import('./components/InstagramQRModal').then(m => ({ default: m.InstagramQRModal })));
+const ProductModal = lazy(() => import('./components/ProductModal').then(m => ({ default: m.ProductModal })));
+const RawMaterialModal = lazy(() => import('./components/RawMaterialModal').then(m => ({ default: m.RawMaterialModal })));
+
+const PageLoadingFallback = () => (
+  <div className="max-w-xl mx-auto px-4 py-8 space-y-4 animate-pulse">
+    <div className="h-8 w-48 bg-zinc-800/60 rounded-2xl" />
+    <div className="h-36 w-full bg-zinc-800/40 rounded-3xl" />
+    <div className="h-24 w-full bg-zinc-800/30 rounded-2xl" />
+  </div>
+);
 
 const MainLayout = () => {
   const { user, isAuthenticated, loading } = useAuth();
   const { showReceipt } = useCart();
 
   const [activeTab, setActiveTab] = useState('home'); // Home Bento as default
-  const [settings, setSettings] = useState(null);
-  const [customers, setCustomers] = useState([]);
+  const [settings, setSettings] = useState(() => {
+    try {
+      const cached = localStorage.getItem('auraframe_cached_settings');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [customers, setCustomers] = useState(() => {
+    try {
+      const cached = localStorage.getItem('auraframe_cached_customers');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
   const [catalogVersion, setCatalogVersion] = useState(0);
   const [isInstantQROpen, setIsInstantQROpen] = useState(false);
   const [isInstagramQROpen, setIsInstagramQROpen] = useState(false);
@@ -49,8 +75,14 @@ const MainLayout = () => {
         api.getCustomers().catch(() => ({})),
       ]);
 
-      if (settingsRes?.data) setSettings(settingsRes.data);
-      if (custRes?.data) setCustomers(custRes.data);
+      if (settingsRes?.data) {
+        setSettings(settingsRes.data);
+        localStorage.setItem('auraframe_cached_settings', JSON.stringify(settingsRes.data));
+      }
+      if (custRes?.data) {
+        setCustomers(custRes.data);
+        localStorage.setItem('auraframe_cached_customers', JSON.stringify(custRes.data));
+      }
       setCatalogVersion((prev) => prev + 1);
     } catch (err) {
       console.error('App init data error:', err);
@@ -58,7 +90,11 @@ const MainLayout = () => {
   };
 
   const handleCustomerCreated = (newCust) => {
-    setCustomers((prev) => [newCust, ...prev]);
+    setCustomers((prev) => {
+      const next = [newCust, ...prev];
+      localStorage.setItem('auraframe_cached_customers', JSON.stringify(next));
+      return next;
+    });
   };
 
   const handleProductSaved = () => {
@@ -68,10 +104,10 @@ const MainLayout = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-slate-950">
+      <div className="min-h-screen w-full flex items-center justify-center bg-[#0c0c0e]">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-12 h-12 border-3 border-brand-500 border-t-transparent rounded-full animate-spin" />
-          <span className="text-xs font-bold text-slate-400">Loading AuraFrame POS...</span>
+          <div className="w-10 h-10 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs font-bold text-zinc-400">Loading AuraFrame POS...</span>
         </div>
       </div>
     );
@@ -108,45 +144,62 @@ const MainLayout = () => {
               />
             )}
             {activeTab === 'dashboard' && (
-              <Dashboard onOpenReceipt={(sale) => showReceipt(sale)} />
+              <Suspense fallback={<PageLoadingFallback />}>
+                <Dashboard onOpenReceipt={(sale) => showReceipt(sale)} />
+              </Suspense>
             )}
             {activeTab === 'inventory' && (
-              <Inventory
-                catalogVersion={catalogVersion}
-                onProductUpdated={handleProductSaved}
-                onNavigateToProducts={() => setActiveTab('products')}
-                onOpenAddProduct={() => setIsAddProductOpen(true)}
-              />
+              <Suspense fallback={<PageLoadingFallback />}>
+                <Inventory
+                  catalogVersion={catalogVersion}
+                  onProductUpdated={handleProductSaved}
+                  onNavigateToProducts={() => setActiveTab('products')}
+                  onOpenAddProduct={() => setIsAddProductOpen(true)}
+                />
+              </Suspense>
             )}
             {activeTab === 'products' && (
-              <Products
-                catalogVersion={catalogVersion}
-                onNavigate={(tab) => setActiveTab(tab)}
-              />
+              <Suspense fallback={<PageLoadingFallback />}>
+                <Products
+                  catalogVersion={catalogVersion}
+                  onNavigate={(tab) => setActiveTab(tab)}
+                />
+              </Suspense>
             )}
             {activeTab === 'customers' && (
-              <Customers
-                onOpenReceipt={(sale) => showReceipt(sale)}
-                onNavigate={(tab) => setActiveTab(tab)}
-              />
+              <Suspense fallback={<PageLoadingFallback />}>
+                <Customers
+                  onOpenReceipt={(sale) => showReceipt(sale)}
+                  onNavigate={(tab) => setActiveTab(tab)}
+                />
+              </Suspense>
             )}
             {activeTab === 'sales' && (
-              <SalesHistory
-                settings={settings}
-                onOpenReceipt={(sale) => showReceipt(sale)}
-                onNavigate={(tab) => setActiveTab(tab)}
-              />
+              <Suspense fallback={<PageLoadingFallback />}>
+                <SalesHistory
+                  settings={settings}
+                  onOpenReceipt={(sale) => showReceipt(sale)}
+                  onNavigate={(tab) => setActiveTab(tab)}
+                />
+              </Suspense>
             )}
             {activeTab === 'settings' && (
-              <Settings
-                user={user}
-                settings={settings}
-                onSettingsUpdated={(newSet) => setSettings(newSet)}
-                onNavigate={(tab) => setActiveTab(tab)}
-              />
+              <Suspense fallback={<PageLoadingFallback />}>
+                <Settings
+                  user={user}
+                  settings={settings}
+                  onSettingsUpdated={(newSet) => {
+                    setSettings(newSet);
+                    localStorage.setItem('auraframe_cached_settings', JSON.stringify(newSet));
+                  }}
+                  onNavigate={(tab) => setActiveTab(tab)}
+                />
+              </Suspense>
             )}
             {activeTab === 'customization' && (
-              <Customization onNavigate={(tab) => setActiveTab(tab)} />
+              <Suspense fallback={<PageLoadingFallback />}>
+                <Customization onNavigate={(tab) => setActiveTab(tab)} />
+              </Suspense>
             )}
           </div>
         </ErrorBoundary>
@@ -159,31 +212,41 @@ const MainLayout = () => {
         onNavigate={(tab) => setActiveTab(tab)}
       />
       <ReceiptModal settings={settings} />
-      <InstantQRModal
-        isOpen={isInstantQROpen}
-        onClose={() => setIsInstantQROpen(false)}
-        settings={settings}
-      />
-      <InstagramQRModal
-        isOpen={isInstagramQROpen}
-        onClose={() => setIsInstagramQROpen(false)}
-        settings={settings}
-        user={user}
-      />
-      <ProductModal
-        isOpen={isAddProductOpen}
-        onClose={() => setIsAddProductOpen(false)}
-        onSaveSuccess={handleProductSaved}
-      />
-      <RawMaterialModal
-        isOpen={isRawMaterialOpen}
-        onClose={() => setIsRawMaterialOpen(false)}
-        onSaveSuccess={() => {
-          setCatalogVersion((prev) => prev + 1);
-          loadInitialAppData();
-        }}
-      />
 
+      <Suspense fallback={null}>
+        {isInstantQROpen && (
+          <InstantQRModal
+            isOpen={isInstantQROpen}
+            onClose={() => setIsInstantQROpen(false)}
+            settings={settings}
+          />
+        )}
+        {isInstagramQROpen && (
+          <InstagramQRModal
+            isOpen={isInstagramQROpen}
+            onClose={() => setIsInstagramQROpen(false)}
+            settings={settings}
+            user={user}
+          />
+        )}
+        {isAddProductOpen && (
+          <ProductModal
+            isOpen={isAddProductOpen}
+            onClose={() => setIsAddProductOpen(false)}
+            onSaveSuccess={handleProductSaved}
+          />
+        )}
+        {isRawMaterialOpen && (
+          <RawMaterialModal
+            isOpen={isRawMaterialOpen}
+            onClose={() => setIsRawMaterialOpen(false)}
+            onSaveSuccess={() => {
+              setCatalogVersion((prev) => prev + 1);
+              loadInitialAppData();
+            }}
+          />
+        )}
+      </Suspense>
 
       {/* Mobile Bottom Navigation */}
       <BottomNav

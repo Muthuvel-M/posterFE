@@ -21,32 +21,35 @@ export const AuthProvider = ({ children }) => {
       return null;
     }
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
     const verifyUser = async () => {
       if (token) {
         try {
           const res = await api.getMe();
-          if (res?.user) {
+          if (mounted && res?.user) {
             setUser(res.user);
             localStorage.setItem('auraframe_user', JSON.stringify(res.user));
-          } else {
-            logout();
           }
         } catch (err) {
-          logout();
+          // If explicitly 401 unauthorized, logout. Otherwise preserve offline session.
+          if (err.message && err.message.toLowerCase().includes('unauthorized')) {
+            if (mounted) logout();
+          }
         }
       }
-      setLoading(false);
     };
 
     verifyUser();
 
-
     const handleLogout = () => logout();
     window.addEventListener('auth_logout', handleLogout);
-    return () => window.removeEventListener('auth_logout', handleLogout);
+    return () => {
+      mounted = false;
+      window.removeEventListener('auth_logout', handleLogout);
+    };
   }, [token]);
 
   const login = async (email, password) => {

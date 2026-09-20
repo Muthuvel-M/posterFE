@@ -1,5 +1,12 @@
 const BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
+// Eagerly pre-warm the backend server on startup to eliminate cold starts
+try {
+  fetch(`${BASE_URL}/health`, { method: 'GET', keepalive: true }).catch(() => {});
+} catch (e) {
+  // Silent catch
+}
+
 const request = async (endpoint, options = {}) => {
   const token = localStorage.getItem('auraframe_token');
   const headers = {
@@ -9,7 +16,7 @@ const request = async (endpoint, options = {}) => {
   };
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), options.timeout || 15000);
+  const timeoutId = setTimeout(() => controller.abort(), options.timeout || 35000);
 
   try {
     const response = await fetch(`${BASE_URL}${endpoint}`, {
@@ -22,7 +29,7 @@ const request = async (endpoint, options = {}) => {
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      if (response.status === 401 && !endpoint.includes('/login')) {
+      if (response.status === 401 && !endpoint.includes('/login') && !endpoint.includes('/register')) {
         localStorage.removeItem('auraframe_token');
         localStorage.removeItem('auraframe_user');
         window.dispatchEvent(new Event('auth_logout'));
@@ -38,7 +45,7 @@ const request = async (endpoint, options = {}) => {
   } catch (err) {
     clearTimeout(timeoutId);
     if (err.name === 'AbortError') {
-      throw new Error('Request timed out. Please check your server connection.');
+      throw new Error('Server took too long to respond. Waking up server, please retry.');
     }
     throw err;
   }

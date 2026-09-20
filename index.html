@@ -4,18 +4,36 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/logo.png" />
     <link rel="apple-touch-icon" href="/logo.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="theme-color" content="#ff3e3e" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#0c0c0e" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="description" content="AuraFrame POS - Mobile-First Point of Sale & Inventory Management for Posters and Frames" />
     <title>AuraFrame POS - Posters & Frames Management</title>
-    <!-- Google Fonts -->
+    
+    <!-- Critical Preconnects for instant API & Fonts connection -->
+    <link rel="preconnect" href="https://posterbe.onrender.com" crossorigin />
+    <link rel="dns-prefetch" href="https://posterbe.onrender.com" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    
+    <!-- Optimized Google Fonts with font-display: swap -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+    
+    <!-- Instant Backend Warmup Ping (eliminates Render cold start latency on mobile) -->
+    <script>
+      (function() {
+        try {
+          fetch('https://posterbe.onrender.com/api/health', { method: 'GET', keepalive: true }).catch(function(){});
+        } catch(e){}
+      })();
+    </script>
+
     <!-- Google Identity Services (OAuth) -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
   </head>
-  <body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen antialiased selection:bg-brand-500 selection:text-white">
+  <body class="bg-[#0c0c0e] text-slate-100 min-h-screen antialiased selection:bg-amber-400 selection:text-black overscroll-none">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

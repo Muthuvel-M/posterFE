@@ -46,7 +46,14 @@ export const Checkout = ({
   // Wizard Steps
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState(() => {
+    try {
+      const cached = localStorage.getItem('auraframe_cached_products');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
   const [categoryFilter, setCategoryFilter] = useState('poster'); // 'poster' | 'frame' | 'sticker' | 'all'
 
   // Step 2 Form States
@@ -68,13 +75,17 @@ export const Checkout = ({
 
   const fetchProducts = async () => {
     try {
-      setLoading(true);
+      if (products.length === 0) setLoading(true);
       const res = await api.getProducts({ active: 'true' });
-      if (res.success) {
+      if (res.success && Array.isArray(res.data)) {
         setProducts(res.data);
+        localStorage.setItem('auraframe_cached_products', JSON.stringify(res.data));
       }
     } catch (error) {
-      showToast('Failed to load live product catalog', 'error');
+      // Don't show toast if we already have cached products displayed
+      if (products.length === 0) {
+        showToast('Connecting to catalog...', 'info', 1500);
+      }
     } finally {
       setLoading(false);
     }
@@ -286,6 +297,8 @@ export const Checkout = ({
                         <img
                           src={p.image}
                           alt={p.name}
+                          loading="lazy"
+                          decoding="async"
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       ) : (
