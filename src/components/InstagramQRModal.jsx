@@ -9,8 +9,8 @@ export const InstagramQRModal = ({ isOpen, onClose, settings, user }) => {
 
   if (!shouldRender) return null;
 
-  const instagramUrl = settings?.instagramUrl || 'https://instagram.com/auraframe.posters';
-  const userName = user?.name || settings?.businessName || 'Muthuvel M';
+  const instagramUrl = settings?.instagramUrl || 'https://www.instagram.com/aura.frame26/';
+  const userName = user?.name || settings?.businessName || 'Aura Frame';
 
   return (
     <div
@@ -59,9 +59,10 @@ export const InstagramQRModal = ({ isOpen, onClose, settings, user }) => {
           />
         </div>
 
-        {/* Domain Pill Badge */}
-        <div className="px-4 py-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-300 font-medium mb-3">
-          instagram.com
+        {/* Domain / Handle Pill Badge */}
+        <div className="px-4 py-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-mono text-pink-400 font-bold mb-3 flex items-center gap-1.5 shadow-sm">
+          <InstagramIcon className="w-3.5 h-3.5 text-pink-500" />
+          <span>{instagramUrl.replace(/^(https?:\/\/)?(www\.)?instagram\.com\//, '@').replace(/\/$/, '') || '@aura.frame26'}</span>
         </div>
 
         {/* Caption */}

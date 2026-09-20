@@ -66,7 +66,7 @@ export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNaviga
         paymentMode: settings.paymentMode || 'direct',
         upiId: settings.upiId || '',
         secondaryUpiId: settings.secondaryUpiId || '',
-        instagramUrl: settings.instagramUrl || 'https://instagram.com/mybusiness',
+        instagramUrl: settings.instagramUrl || 'https://www.instagram.com/aura.frame26/',
         phone: settings.phone || '+91 9876543210',
         tagline: settings.tagline || 'Posters & Custom Framing',
         address: settings.address || '',
@@ -318,7 +318,7 @@ export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNaviga
                 type="url"
                 value={formData.instagramUrl}
                 onChange={(e) => setFormData({ ...formData, instagramUrl: e.target.value })}
-                placeholder="https://instagram.com/mybusiness"
+                placeholder="https://www.instagram.com/aura.frame26/"
                 className="w-full bg-transparent text-sm text-zinc-200 focus:outline-none placeholder:text-zinc-600"
               />
             </div>
