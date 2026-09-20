@@ -345,10 +345,26 @@ export const Customization = ({ onNavigate }) => {
           filteredOrders.map((order, idx) => {
             const badge = getStatusBadge(order?.orderStatus);
             const balanceDue = order?.pricing?.balanceDue || 0;
-            const isFramed = Boolean(order?.framing?.isFramed);
             const custName = order?.customerSnapshot?.name || order?.customer?.name || 'Walk-in Customer';
             const custPhone = order?.customerSnapshot?.phone || order?.customer?.phone || '';
-            const dueDateFormatted = formatDueDate(order?.dueDate);
+            const sizeLabel = order?.dimensions?.sizeType || 'A4';
+
+            const getItemTypeBadge = (type) => {
+              switch (type) {
+                case 'custom_framed_poster':
+                  return { label: '🖼️ Framed Print', color: 'bg-amber-400/10 text-amber-300 border-amber-400/30' };
+                case 'custom_poster':
+                  return { label: '🎨 Poster Only', color: 'bg-blue-400/10 text-blue-300 border-blue-400/30' };
+                case 'custom_frame':
+                  return { label: '🔲 Frame Only', color: 'bg-purple-400/10 text-purple-300 border-purple-400/30' };
+                case 'custom_sticker':
+                  return { label: '✨ Stickers', color: 'bg-pink-400/10 text-pink-300 border-pink-400/30' };
+                default:
+                  return { label: '🖼️ Framed Print', color: 'bg-zinc-800 text-zinc-300 border-zinc-700' };
+              }
+            };
+
+            const itemTypeInfo = getItemTypeBadge(order?.itemType);
 
             return (
               <div
@@ -356,7 +372,7 @@ export const Customization = ({ onNavigate }) => {
                 style={{ animationDelay: `${70 + idx * 30}ms` }}
                 className="p-4 sm:p-5 rounded-3xl bg-[#16161b] border border-zinc-800/80 hover:border-zinc-700 transition-all shadow-lg animate-card-in space-y-3"
               >
-                {/* Row 1: Header - Order ID, Status, Due Date */}
+                {/* Row 1: Header - Order ID, Status, Date */}
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/60 pb-3">
                   <div className="flex items-center gap-2">
                     <span className="px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-700 font-mono text-xs font-black text-amber-300">
@@ -369,42 +385,25 @@ export const Customization = ({ onNavigate }) => {
                     </span>
                   </div>
 
-                  {dueDateFormatted && (
+                  {order?.createdAt && (
                     <span className="text-[11px] font-medium text-zinc-400 flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Due: {dueDateFormatted}</span>
+                      <Clock className="w-3.5 h-3.5 text-zinc-500" />
+                      <span>{formatDateTime(order.createdAt)}</span>
                     </span>
                   )}
                 </div>
 
-                {/* Row 2: Customer, Photo, Specs */}
-                <div className="flex flex-col sm:flex-row gap-4 items-start">
-                  {/* Photo Preview */}
-                  <div className="w-20 h-24 sm:w-24 sm:h-28 rounded-2xl overflow-hidden bg-zinc-900 border border-zinc-800 shrink-0 flex items-center justify-center relative shadow-md">
-                    {order?.image ? (
-                      <img
-                        src={order.image}
-                        alt={order.title || 'Custom artwork'}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <Palette className="w-6 h-6 text-zinc-600" />
-                    )}
-                  </div>
-
-                  {/* Order Details & Customer */}
-                  <div className="flex-1 min-w-0 space-y-1.5">
-                    <h3 className="text-sm sm:text-base font-bold text-white truncate">
-                      {order?.title || 'Custom Framing Order'}
-                    </h3>
-
-                    {/* Customer Info & WhatsApp Link */}
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-300">
-                      <span className="font-bold text-white">{custName}</span>
+                {/* Row 2: Customer, Item Type, Size & Pricing */}
+                <div className="flex flex-col sm:flex-row gap-4 items-start justify-between">
+                  {/* Customer Info & Order Details */}
+                  <div className="flex-1 min-w-0 space-y-2">
+                    {/* Customer Name & WhatsApp */}
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className="text-sm sm:text-base font-black text-white">{custName}</span>
                       {custPhone && (
                         <>
-                          <span>•</span>
-                          <span className="font-mono text-zinc-400">{custPhone}</span>
+                          <span className="text-zinc-500">•</span>
+                          <span className="font-mono text-xs text-zinc-400 font-medium">{custPhone}</span>
                           <button
                             type="button"
                             onClick={() => handleOpenWhatsApp(order)}
@@ -418,47 +417,37 @@ export const Customization = ({ onNavigate }) => {
                       )}
                     </div>
 
-                    {/* Specifications Tags */}
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      <span className="px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 text-[10px] font-bold text-zinc-300 uppercase">
-                        {order?.dimensions?.sizeType || 'Custom'} ({order?.orientation || 'portrait'})
+                    {/* Item Type & Size Chips */}
+                    <div className="flex flex-wrap gap-1.5 items-center">
+                      <span
+                        className={`px-2.5 py-1 rounded-xl text-xs font-bold border ${itemTypeInfo.color}`}
+                      >
+                        {itemTypeInfo.label}
                       </span>
 
-                      {isFramed ? (
-                        <span className="px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 text-[10px] font-bold text-amber-300 capitalize">
-                          🔲 {(order?.framing?.frameColor || 'matte_black').replace('_', ' ')} Frame
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 text-[10px] font-bold text-blue-300 capitalize">
-                          🎨 Print Only ({(order?.paperFinish || 'matte_art').replace('_', ' ')})
-                        </span>
-                      )}
-
-                      {order?.framing?.glassType && order.framing.glassType !== 'none' && (
-                        <span className="px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 text-[10px] font-semibold text-zinc-400">
-                          {order.framing.glassType.replace('_', ' ')}
-                        </span>
-                      )}
+                      <span className="px-2.5 py-1 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-extrabold text-amber-300 uppercase">
+                        Size: {sizeLabel}
+                      </span>
                     </div>
 
                     {/* Custom Notes */}
                     {order?.customNotes && (
-                      <p className="text-[11px] text-zinc-400 italic pt-0.5 line-clamp-1">
+                      <p className="text-xs text-zinc-400 italic pt-0.5 bg-zinc-900/60 p-2 rounded-xl border border-zinc-800/60">
                         "{order.customNotes}"
                       </p>
                     )}
                   </div>
 
                   {/* Pricing Column */}
-                  <div className="text-left sm:text-right shrink-0 space-y-0.5 border-t sm:border-t-0 pt-2 sm:pt-0 w-full sm:w-auto">
-                    <div className="text-base font-black text-white">
+                  <div className="text-left sm:text-right shrink-0 space-y-0.5 border-t sm:border-t-0 pt-2 sm:pt-0 w-full sm:w-auto bg-zinc-950/60 sm:bg-transparent p-3 sm:p-0 rounded-2xl border sm:border-0 border-zinc-800/60">
+                    <div className="text-base sm:text-lg font-black text-white">
                       {formatCurrency(order?.pricing?.totalPrice || 0)}
                     </div>
-                    <div className="text-[11px] text-emerald-400 font-semibold">
+                    <div className="text-xs text-emerald-400 font-semibold">
                       Advance: {formatCurrency(order?.pricing?.advancePaid || 0)}
                     </div>
                     <div
-                      className={`text-xs font-black ${balanceDue > 0 ? 'text-rose-400' : 'text-zinc-500'
+                      className={`text-xs font-black ${balanceDue > 0 ? 'text-rose-400' : 'text-emerald-400'
                         }`}
                     >
                       {balanceDue > 0 ? `Due: ₹${balanceDue}` : 'Fully Paid ✓'}

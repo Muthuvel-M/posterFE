@@ -716,11 +716,9 @@ export const CustomOrderModal = ({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-[11px] font-bold text-zinc-300">
-                    Advance Paid (₹)
+                    Adv Pay (₹)
                   </label>
-                  <span className="text-[10px] font-extrabold text-emerald-400 uppercase">
-                    50% Default
-                  </span>
+
                 </div>
                 <div className="relative">
                   <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-400" />
@@ -743,7 +741,7 @@ export const CustomOrderModal = ({
                 onClick={() => setAdvancePaid(Math.round(Number(totalPrice) / 2))}
                 className="py-1 px-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-bold text-amber-300 transition-colors cursor-pointer"
               >
-                Half Deposit (50% = ₹{Math.round(Number(totalPrice) / 2)})
+                Half Deposit (50%)
               </button>
               <button
                 type="button"
@@ -751,13 +749,6 @@ export const CustomOrderModal = ({
                 className="py-1 px-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-bold text-emerald-400 transition-colors cursor-pointer"
               >
                 Full Paid (100%)
-              </button>
-              <button
-                type="button"
-                onClick={() => setAdvancePaid(0)}
-                className="py-1 px-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-bold text-zinc-400 transition-colors cursor-pointer"
-              >
-                No Advance (₹0)
               </button>
             </div>
 
