@@ -151,9 +151,20 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
   };
 
   const handleSendWhatsApp = () => {
-    if (completedSaleData) {
-      const waUrl = generateWhatsAppReceiptUrl(completedSaleData, settings);
-      window.open(waUrl, '_blank');
+    const saleData = completedSaleData || activeSale;
+    if (saleData) {
+      const mergedSale = {
+        ...saleData,
+        customerSnapshot: {
+          name: saleData.customerSnapshot?.name || customer?.name || 'Walk-in Customer',
+          phone: saleData.customerSnapshot?.phone || customer?.phone || '',
+          ...saleData.customerSnapshot,
+        },
+      };
+      const waUrl = generateWhatsAppReceiptUrl(mergedSale, settings);
+      if (waUrl) {
+        window.open(waUrl, '_blank');
+      }
     }
   };
 

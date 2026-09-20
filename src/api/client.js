@@ -123,6 +123,7 @@ export const api = {
     const query = new URLSearchParams(params).toString();
     return request(`/analytics/dashboard${query ? `?${query}` : ''}`);
   },
+  getDashboardCounts: () => request('/analytics/counts'),
 
   // Settings
   getSettings: () => request('/settings'),

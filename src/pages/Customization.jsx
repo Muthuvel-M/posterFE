@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { CustomOrderModal } from '../components/CustomOrderModal';
-import { formatCurrency, formatDateTime } from '../utils/formatters';
+import { formatCurrency, formatDateTime, generateCustomOrderWhatsAppReceiptUrl } from '../utils/formatters';
 import { api } from '../api/client';
 
 export const Customization = ({ onNavigate }) => {
@@ -149,17 +149,12 @@ export const Customization = ({ onNavigate }) => {
   };
 
   const handleOpenWhatsApp = (order) => {
-    const phone = (order.customerSnapshot?.phone || order.customer?.phone || '').replace(/[^0-9]/g, '');
-    if (!phone) {
+    const waUrl = generateCustomOrderWhatsAppReceiptUrl(order);
+    if (!waUrl) {
       showToast('No phone number recorded for customer', 'error');
       return;
     }
-    const cleanPhone = phone.length === 10 ? `91${phone}` : phone.startsWith('91') ? phone : `91${phone}`;
-    const custName = order.customerSnapshot?.name || order.customer?.name || 'Customer';
-    const text = encodeURIComponent(
-      `Hello ${custName}! Regarding your AuraFrame custom order (${order.orderNumber || ''} - "${order.title || 'Custom Order'}"): Your order status is currently "${(order.orderStatus || '').toUpperCase()}". Remaining balance due: ₹${order.pricing?.balanceDue || 0}. Thank you!`
-    );
-    window.open(`https://wa.me/${cleanPhone}?text=${text}`, '_blank');
+    window.open(waUrl, '_blank');
   };
 
   const safeOrders = Array.isArray(orders) ? orders : [];
@@ -344,7 +339,35 @@ export const Customization = ({ onNavigate }) => {
                 ? order.itemTypes
                 : [order?.itemType || 'custom_framed_poster'];
 
-            // Size tiers list
+            // Size tiers list & separated tiers
+            const posterTiersList =
+              Array.isArray(order?.posterTiers) && order.posterTiers.length > 0
+                ? order.posterTiers
+                : (Array.isArray(order?.sizeTiers)
+                    ? order.sizeTiers
+                        .filter((st) => st.type === 'poster' || (st.posterPrice && Number(st.posterPrice) > 0))
+                        .map((st) => ({
+                          size: st.size || 'A4',
+                          count: Number(st.count) || 1,
+                          price: Number(st.price) || Number(st.posterPrice) || 0,
+                          total: (Number(st.count) || 1) * (Number(st.price) || Number(st.posterPrice) || 0),
+                        }))
+                    : []);
+
+            const frameTiersList =
+              Array.isArray(order?.frameTiers) && order.frameTiers.length > 0
+                ? order.frameTiers
+                : (Array.isArray(order?.sizeTiers)
+                    ? order.sizeTiers
+                        .filter((st) => st.type === 'frame' || (st.framePrice && Number(st.framePrice) > 0))
+                        .map((st) => ({
+                          size: st.size || 'A4',
+                          count: Number(st.count) || 1,
+                          price: Number(st.price) || Number(st.framePrice) || 0,
+                          total: (Number(st.count) || 1) * (Number(st.price) || Number(st.framePrice) || 0),
+                        }))
+                    : []);
+
             const sizeTiersList =
               Array.isArray(order?.sizeTiers) && order.sizeTiers.length > 0
                 ? order.sizeTiers
@@ -356,7 +379,11 @@ export const Customization = ({ onNavigate }) => {
                   },
                 ];
 
-            const totalUnits = sizeTiersList.reduce((acc, c) => acc + (Number(c.count) || 1), 0);
+            const totalPosterCount = posterTiersList.reduce((acc, c) => acc + (Number(c.count) || 0), 0);
+            const totalFrameCount = frameTiersList.reduce((acc, c) => acc + (Number(c.count) || 0), 0);
+            const totalUnits = (totalPosterCount + totalFrameCount) > 0
+              ? (totalPosterCount + totalFrameCount)
+              : sizeTiersList.reduce((acc, c) => acc + (Number(c.count) || 1), 0);
 
             const placedDate = formatDateOnly(order?.orderDate || order?.createdAt);
             const deliveryDate = formatDateOnly(order?.deliveryDate || order?.dueDate);
@@ -440,42 +467,103 @@ export const Customization = ({ onNavigate }) => {
                       </span>
                     </div>
 
-                    {/* Size Tiers Breakdown (Count & Unit Prices) */}
-                    <div className="space-y-1">
-                      <span className="text-[10px] uppercase font-bold text-zinc-500 block">
-                        Size Tiers & Rates:
-                      </span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {sizeTiersList.map((st, i) => {
-                          const posterP = Number(st.posterPrice) || 0;
-                          const frameP = Number(st.framePrice) || 0;
-                          const unitP = Number(st.unitPrice) || (posterP + frameP);
-                          const count = Number(st.count) || 1;
-                          const rowTotal = count * unitP;
+                    {/* Size Tiers Breakdown - Separated for Posters & Frames */}
+                    <div className="space-y-2">
+                      {posterTiersList.length > 0 && (
+                        <div className="space-y-1">
+                          <span className="text-[10px] uppercase font-bold text-amber-400/90 flex items-center gap-1">
+                            <span>🎨 Poster Sizes:</span>
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {posterTiersList.map((pt, i) => {
+                              const count = Number(pt.count) || 1;
+                              const price = Number(pt.price) || 0;
+                              const rowTotal = count * price;
+                              return (
+                                <div
+                                  key={i}
+                                  className="px-2.5 py-1 rounded-xl bg-zinc-900 border border-amber-500/20 flex items-center gap-1.5 text-xs font-bold"
+                                >
+                                  <span className="text-amber-400 font-mono font-black">{count}×</span>
+                                  <span className="text-white uppercase">{pt.size || 'A4'}</span>
+                                  {price > 0 && (
+                                    <span className="text-zinc-400 font-normal text-[10.5px]">
+                                      @ ₹{price}
+                                    </span>
+                                  )}
+                                  {rowTotal > 0 && (
+                                    <span className="text-emerald-400 font-mono font-bold text-[10.5px]">
+                                      = ₹{rowTotal}
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
 
-                          return (
-                            <div
-                              key={i}
-                              className="px-2.5 py-1 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center gap-1.5 text-xs font-bold"
-                            >
-                              <span className="text-amber-400 font-mono font-black">{count}×</span>
-                              <span className="text-white uppercase">{st.size || 'A4'}</span>
-                              {posterP > 0 && frameP > 0 ? (
-                                <span className="text-zinc-400 font-normal text-[10.5px]">
-                                  (P: ₹{posterP} + F: ₹{frameP})
-                                </span>
-                              ) : (
-                                <span className="text-zinc-400 font-normal text-[11px]">
-                                  @ ₹{unitP}
-                                </span>
-                              )}
-                              <span className="text-emerald-400 font-mono font-bold text-[11px]">
-                                = ₹{rowTotal}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
+                      {frameTiersList.length > 0 && (
+                        <div className="space-y-1">
+                          <span className="text-[10px] uppercase font-bold text-amber-400/90 flex items-center gap-1">
+                            <span>🔲 Frame Sizes:</span>
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {frameTiersList.map((ft, i) => {
+                              const count = Number(ft.count) || 1;
+                              const price = Number(ft.price) || 0;
+                              const rowTotal = count * price;
+                              return (
+                                <div
+                                  key={i}
+                                  className="px-2.5 py-1 rounded-xl bg-zinc-900 border border-zinc-700/60 flex items-center gap-1.5 text-xs font-bold"
+                                >
+                                  <span className="text-amber-400 font-mono font-black">{count}×</span>
+                                  <span className="text-white uppercase">{ft.size || 'A4'}</span>
+                                  {price > 0 && (
+                                    <span className="text-zinc-400 font-normal text-[10.5px]">
+                                      @ ₹{price}
+                                    </span>
+                                  )}
+                                  {rowTotal > 0 && (
+                                    <span className="text-emerald-400 font-mono font-bold text-[10.5px]">
+                                      = ₹{rowTotal}
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {posterTiersList.length === 0 && frameTiersList.length === 0 && (
+                        <div className="space-y-1">
+                          <span className="text-[10px] uppercase font-bold text-zinc-500 block">
+                            Size Tiers:
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {sizeTiersList.map((st, i) => {
+                              const unitP = Number(st.unitPrice) || Number(st.total) || 0;
+                              const count = Number(st.count) || 1;
+                              return (
+                                <div
+                                  key={i}
+                                  className="px-2.5 py-1 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center gap-1.5 text-xs font-bold"
+                                >
+                                  <span className="text-amber-400 font-mono font-black">{count}×</span>
+                                  <span className="text-white uppercase">{st.size || 'A4'}</span>
+                                  {unitP > 0 && (
+                                    <span className="text-zinc-400 font-normal text-[11px]">
+                                      @ ₹{unitP}
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Custom Notes */}

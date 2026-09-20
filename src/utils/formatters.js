@@ -62,11 +62,20 @@ export const generateUPIUrl = ({ upiId, upiName, amount, saleNumber }) => {
  */
 export const generateWhatsAppReceiptUrl = (sale, settings) => {
   if (!sale) return '';
-  const customerName = sale.customerSnapshot?.name || sale.customer?.name || 'Friend';
-  const phone = sale.customerSnapshot?.phone || sale.customer?.phone || '';
-  
-  const cleanPhone = phone.replace(/[^0-9]/g, '');
-  const targetPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+  const customerName =
+    sale.customerSnapshot?.name || sale.customer?.name || sale.customerName || 'Friend';
+  const rawPhone =
+    sale.customerSnapshot?.phone || sale.customer?.phone || sale.phone || sale.customerPhone || '';
+
+  const cleanPhone = String(rawPhone).replace(/[^0-9]/g, '');
+  let targetPhone = '';
+  if (cleanPhone.length === 10) {
+    targetPhone = `91${cleanPhone}`;
+  } else if (cleanPhone.length === 12 && cleanPhone.startsWith('91')) {
+    targetPhone = cleanPhone;
+  } else if (cleanPhone.length > 5) {
+    targetPhone = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone.slice(-10)}`;
+  }
 
   let msg = `Thank you, ${customerName}! 💛\n`;
   msg += `Your AuraFrame order is confirmed, and your receipt is attached. 🧾\n`;
@@ -89,6 +98,94 @@ export const generateWhatsAppReceiptUrl = (sale, settings) => {
   msg += `*Total Paid: ₹${sale.total}*\n`;
   msg += `Payment Mode: ${(sale.paymentMethod || 'UPI').toUpperCase()}\n`;
   msg += `Status: PAID ✓\n`;
+  msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
+  msg += `Instagram: @aura.frame26`;
+
+  const encodedText = encodeURIComponent(msg);
+  if (targetPhone) {
+    return `https://wa.me/${targetPhone}?text=${encodedText}`;
+  }
+  return `https://wa.me/?text=${encodedText}`;
+};
+
+/**
+ * Formats WhatsApp Custom Order Receipt URL with itemized poster and frame details
+ */
+export const generateCustomOrderWhatsAppReceiptUrl = (order, settings) => {
+  if (!order) return '';
+  const customerName =
+    order.customerSnapshot?.name || order.customer?.name || order.customerName || 'Friend';
+  const rawPhone =
+    order.customerSnapshot?.phone || order.customer?.phone || order.phone || '';
+
+  const cleanPhone = String(rawPhone).replace(/[^0-9]/g, '');
+  let targetPhone = '';
+  if (cleanPhone.length === 10) {
+    targetPhone = `91${cleanPhone}`;
+  } else if (cleanPhone.length === 12 && cleanPhone.startsWith('91')) {
+    targetPhone = cleanPhone;
+  } else if (cleanPhone.length > 5) {
+    targetPhone = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone.slice(-10)}`;
+  }
+
+  const orderNum = order.orderNumber || 'AF-CUST';
+  const orderTitle = order.title || 'Custom Order';
+  const placedDate = order.orderDate ? formatDate(order.orderDate) : formatDate(order.createdAt || new Date());
+  const deliveryDate = order.deliveryDate ? formatDate(order.deliveryDate) : formatDate(order.dueDate);
+
+  let msg = `Thank you, ${customerName}! 💛\n`;
+  msg += `Your AuraFrame custom order is confirmed, and your receipt is attached. 🧾\n`;
+  msg += `Hope your walls glow with your new posters! ✨\n`;
+  msg += `Tag us @aura.frame26 when you put them up 📸\n\n`;
+  msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
+  msg += `🧾 *CUSTOM ORDER #${orderNum}*\n`;
+  msg += `📦 *Order:* ${orderTitle}\n`;
+  msg += `📅 *Placed Date:* ${placedDate}\n`;
+  if (deliveryDate && deliveryDate !== '-') {
+    msg += `🚚 *Expected Delivery:* ${deliveryDate}\n`;
+  }
+  msg += `\n`;
+
+  // Posters
+  const posterTiers = Array.isArray(order.posterTiers) && order.posterTiers.length > 0
+    ? order.posterTiers
+    : (Array.isArray(order.sizeTiers) ? order.sizeTiers.filter((st) => st.type === 'poster' || (st.posterPrice && Number(st.posterPrice) > 0)) : []);
+
+  if (posterTiers.length > 0) {
+    msg += `🎨 *Poster Sizes:*\n`;
+    posterTiers.forEach((pt) => {
+      const count = Number(pt.count) || 1;
+      const price = Number(pt.price) || Number(pt.posterPrice) || 0;
+      msg += `• ${count}× ${pt.size || 'A4'} — ₹${count * price}\n`;
+    });
+    msg += `\n`;
+  }
+
+  // Frames
+  const frameTiers = Array.isArray(order.frameTiers) && order.frameTiers.length > 0
+    ? order.frameTiers
+    : (Array.isArray(order.sizeTiers) ? order.sizeTiers.filter((st) => st.type === 'frame' || (st.framePrice && Number(st.framePrice) > 0)) : []);
+
+  if (frameTiers.length > 0) {
+    msg += `🔲 *Frame Sizes:*\n`;
+    frameTiers.forEach((ft) => {
+      const count = Number(ft.count) || 1;
+      const price = Number(ft.price) || Number(ft.framePrice) || 0;
+      msg += `• ${count}× ${ft.size || 'A4'} — ₹${count * price}\n`;
+    });
+    msg += `\n`;
+  }
+
+  const totalPrice = Number(order.pricing?.totalPrice) || 0;
+  const advancePaid = Number(order.pricing?.advancePaid) || 0;
+  const balanceDue = Number(order.pricing?.balanceDue) || Math.max(0, totalPrice - advancePaid);
+
+  msg += `─────────────────────\n`;
+  msg += `*Total Quoted: ₹${totalPrice}*\n`;
+  msg += `Advance Paid: ₹${advancePaid}\n`;
+  msg += `*Balance Due: ₹${balanceDue}*\n`;
+  msg += `Payment Status: ${(order.paymentStatus || 'pending').toUpperCase()}\n`;
+  msg += `Order Status: ${(order.orderStatus || 'received').toUpperCase()}\n`;
   msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
   msg += `Instagram: @aura.frame26`;
 
