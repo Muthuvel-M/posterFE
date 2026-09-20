@@ -15,15 +15,18 @@ export const Login = () => {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const googleBtnRef = useRef(null);
+  const tokenClient = useRef(null);
 
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
   useEffect(() => {
     let initialized = false;
+
     const initGoogle = () => {
-      if (window.google?.accounts?.id && googleClientId && !initialized) {
+      if (window.google?.accounts && googleClientId && !initialized) {
         initialized = true;
         try {
+          // 1. Initialize Google Identity Services (ID Token flow)
           window.google.accounts.id.initialize({
             client_id: googleClientId,
             callback: handleGoogleCredentialResponse,
@@ -31,12 +34,43 @@ export const Login = () => {
             cancel_on_tap_outside: true,
           });
 
-          if (googleBtnRef.current) {
-            window.google.accounts.id.renderButton(googleBtnRef.current, {
-              theme: 'filled_blue',
-              size: 'large',
-              shape: 'rectangular',
-              width: 320,
+          // 2. Initialize OAuth 2.0 Token Client (Popup flow)
+          if (window.google.accounts.oauth2) {
+            tokenClient.current = window.google.accounts.oauth2.initTokenClient({
+              client_id: googleClientId,
+              scope: 'email profile openid',
+              callback: async (tokenResponse) => {
+                if (tokenResponse?.access_token) {
+                  try {
+                    setGoogleLoading(true);
+                    const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                      headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+                    });
+                    const profile = await userRes.json();
+                    if (profile?.email) {
+                      const res = await googleLogin({
+                        email: profile.email,
+                        name: profile.name || profile.given_name || 'Google User',
+                        picture: profile.picture,
+                      });
+                      if (res && res.success) {
+                        showToast(`Welcome, ${profile.name || profile.email}!`, 'success');
+                      }
+                    } else {
+                      throw new Error('Google profile not found');
+                    }
+                  } catch (err) {
+                    showToast(err.message || 'Google Sign-In failed', 'error');
+                  } finally {
+                    setGoogleLoading(false);
+                  }
+                }
+              },
+              error_callback: (err) => {
+                setGoogleLoading(false);
+                console.warn('Google OAuth popup error:', err);
+                showToast('Google Sign-In popup closed or origin unverified. Please use email & password.', 'info');
+              },
             });
           }
         } catch (e) {
@@ -45,15 +79,15 @@ export const Login = () => {
       }
     };
 
-    if (window.google?.accounts?.id) {
+    if (window.google?.accounts) {
       initGoogle();
     } else {
       const interval = setInterval(() => {
-        if (window.google?.accounts?.id) {
+        if (window.google?.accounts) {
           clearInterval(interval);
           initGoogle();
         }
-      }, 300);
+      }, 250);
       return () => clearInterval(interval);
     }
   }, [googleClientId]);
@@ -82,29 +116,33 @@ export const Login = () => {
       return;
     }
 
+    // Prefer OAuth2 popup token flow for instant interactive Google account chooser popup
+    if (tokenClient.current) {
+      try {
+        setGoogleLoading(true);
+        tokenClient.current.requestAccessToken({ prompt: 'select_account' });
+        return;
+      } catch (err) {
+        console.warn('Token client request error:', err);
+      }
+    }
+
+    // Fallback to Google ID One Tap prompt
     if (window.google?.accounts?.id) {
       try {
         window.google.accounts.id.prompt((notification) => {
+          setGoogleLoading(false);
           if (notification.isNotDisplayed()) {
-            const reason = notification.getNotDisplayedReason ? notification.getNotDisplayedReason() : 'unauthorized_origin';
-            if (reason === 'opt_out_or_no_session' || reason === 'suppressed_by_user') {
-              showToast('Please sign in using your email and password below.', 'info');
-            } else {
-              showToast(
-                'Google Sign-In: Origin not whitelisted in Google Cloud Console. Please use Email & Password.',
-                'error',
-                4000
-              );
-            }
-          } else if (notification.isSkippedMoment()) {
-            showToast('Google Sign-in prompt was closed. Please use email & password.', 'info');
+            showToast('Google prompt unavailable. Please sign in with Email & Password below.', 'info', 3500);
           }
         });
       } catch (err) {
-        showToast('Please enter your email and password below.', 'info');
+        setGoogleLoading(false);
+        showToast('Please sign in using your email and password below.', 'info');
       }
     } else {
-      showToast('Google Sign-In is still loading. Please use email and password.', 'info');
+      setGoogleLoading(false);
+      showToast('Google Sign-In is initializing. Please use email and password.', 'info');
     }
   };
 
@@ -146,7 +184,14 @@ export const Login = () => {
         {/* Brand Header */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-[28px] overflow-hidden shadow-2xl shadow-rose-500/20 ring-2 ring-white/10 mb-3.5 animate-scale-up">
-            <img src={logoImg} alt="Aura Frame" className="w-full h-full object-cover" />
+            <img
+              src={logoImg}
+              alt="Aura Frame"
+              loading="eager"
+              decoding="async"
+              fetchpriority="high"
+              className="w-full h-full object-cover"
+            />
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
             AuraFrame <span className="bg-gradient-to-r from-rose-400 to-amber-300 bg-clip-text text-transparent">POS</span>
@@ -188,7 +233,6 @@ export const Login = () => {
 
           {/* Google OAuth Button */}
           <div>
-            <div ref={googleBtnRef} className="hidden" />
             <button
               type="button"
               onClick={handleGoogleSignInClick}
