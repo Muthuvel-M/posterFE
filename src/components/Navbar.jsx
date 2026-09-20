@@ -1,7 +1,8 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { Sun, Moon, LogOut, Sparkles, Layers, ShieldCheck } from 'lucide-react';
+import { Sun, Moon, LogOut, Sparkles, ShieldCheck } from 'lucide-react';
+import logoImg from '../assets/2.png';
 
 export const Navbar = ({ activeTab, setActiveTab, settings }) => {
   const { user, logout } = useAuth();
@@ -12,8 +13,8 @@ export const Navbar = ({ activeTab, setActiveTab, settings }) => {
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Brand Logo & Title */}
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('checkout')}>
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 via-indigo-500 to-purple-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
-            <Layers className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md shadow-rose-500/20 ring-1 ring-slate-200 dark:ring-slate-700 bg-red-600 flex items-center justify-center shrink-0">
+            <img src={logoImg} alt="Aura Frame" className="w-full h-full object-cover" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">

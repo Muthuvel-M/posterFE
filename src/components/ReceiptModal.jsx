@@ -7,6 +7,7 @@ import {
 import { useCart } from '../context/CartContext';
 import { useModalAnimation } from '../hooks/useModalAnimation';
 import { generateWhatsAppReceiptUrl } from '../utils/formatters';
+import logoImg from '../assets/2.png';
 
 export const ReceiptModal = ({ settings }) => {
   const { completedSale, isReceiptModalOpen, closeReceiptModal } = useCart();
@@ -106,8 +107,8 @@ export const ReceiptModal = ({ settings }) => {
         >
           {/* Store Squircle Avatar & Title */}
           <div className="text-center pt-2">
-            <div className="w-14 h-14 rounded-2xl bg-[#eab308] text-white font-extrabold text-xl flex items-center justify-center mx-auto shadow-md shadow-amber-500/20 mb-3">
-              {initials}
+            <div className="w-14 h-14 rounded-2xl overflow-hidden mx-auto shadow-md mb-3 border border-zinc-200/80 bg-red-600 flex items-center justify-center">
+              <img src={logoImg} alt="Aura Frame" className="w-full h-full object-cover" />
             </div>
             <h3 className="text-xl font-bold tracking-tight text-zinc-900">
               {businessName}
