@@ -58,40 +58,39 @@ export const generateUPIUrl = ({ upiId, upiName, amount, saleNumber }) => {
 };
 
 /**
- * Formats WhatsApp Share Receipt message URL
+ * Formats WhatsApp Share Receipt message URL with custom store template
  */
 export const generateWhatsAppReceiptUrl = (sale, settings) => {
   if (!sale) return '';
-  const businessName = settings?.businessName || 'AuraFrame Posters & Frames';
-  const customerName = sale.customerSnapshot?.name || sale.customer?.name || 'Valued Customer';
+  const customerName = sale.customerSnapshot?.name || sale.customer?.name || 'Friend';
   const phone = sale.customerSnapshot?.phone || sale.customer?.phone || '';
   
   const cleanPhone = phone.replace(/[^0-9]/g, '');
   const targetPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
 
-  let msg = `✨ *Thank you for your purchase, ${customerName}!* ✨\n\n`;
-  msg += `*${businessName}*\n`;
-  msg += `*Receipt No:* ${sale.saleNumber}\n`;
-  msg += `*Date:* ${formatDateTime(sale.createdAt || new Date())}\n`;
-  msg += `─────────────────────────\n`;
+  let msg = `Thank you, ${customerName}! 💛\n`;
+  msg += `Your AuraFrame order is confirmed, and your receipt is attached. 🧾\n`;
+  msg += `Hope your walls glow with your new posters! ✨\n`;
+  msg += `Tag us @aura.frame26 when you put them up 📸\n\n`;
+  msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
+  msg += `🧾 *RECEIPT #${sale.saleNumber || 'INV-001'}*\n`;
+  msg += `📅 *Date:* ${formatDateTime(sale.createdAt || new Date())}\n`;
+  msg += `🛍️ *Order Items:*\n`;
 
-  (sale.items || []).forEach((item, idx) => {
-    msg += `${idx + 1}. *${item.name}* (${item.size || 'Standard'})\n`;
-    msg += `   ${item.qty} × ₹${item.sellPrice} = ₹${item.qty * item.sellPrice}\n`;
+  (sale.items || []).forEach((item) => {
+    msg += `• ${item.name} (${item.size || 'Standard'}) × ${item.qty} — ₹${item.qty * item.sellPrice}\n`;
   });
 
-  msg += `─────────────────────────\n`;
+  msg += `─────────────────────\n`;
   msg += `Subtotal: ₹${sale.subtotal}\n`;
   if (sale.discount > 0) {
-    msg += `Discount: -₹${sale.discount}\n`;
+    msg += `Discount Applied: -₹${sale.discount}\n`;
   }
   msg += `*Total Paid: ₹${sale.total}*\n`;
-  msg += `Payment Mode: ${(sale.paymentMethod || 'UPI').toUpperCase()} (${(sale.paymentStatus || 'PAID').toUpperCase()})\n\n`;
-  
-  if (settings?.instagramUrl) {
-    msg += `📸 Follow us on Instagram: ${settings.instagramUrl}\n`;
-  }
-  msg += `Thank you for supporting our craft!`;
+  msg += `Payment Mode: ${(sale.paymentMethod || 'UPI').toUpperCase()}\n`;
+  msg += `Status: PAID ✓\n`;
+  msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
+  msg += `Instagram: @aura.frame26`;
 
   const encodedText = encodeURIComponent(msg);
   if (targetPhone) {
@@ -99,4 +98,200 @@ export const generateWhatsAppReceiptUrl = (sale, settings) => {
   }
   return `https://wa.me/?text=${encodedText}`;
 };
+
+/**
+ * Generates clean, standalone minimal HTML receipt for PDF export or iframe printing
+ */
+export const generateReceiptHTML = (sale, settings) => {
+  if (!sale) return '';
+  const customerName = sale.customerSnapshot?.name || sale.customer?.name || 'Valued Customer';
+  const saleNumber = sale.saleNumber || 'INV-0001';
+  const businessName = settings?.businessName || 'AuraFrame';
+  
+  const saleDate = sale.createdAt ? new Date(sale.createdAt) : new Date();
+  const dateStr = saleDate.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+  const timeStr = saleDate.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  }).toLowerCase();
+
+  const itemsHtml = (sale.items || [])
+    .map(
+      (item) => `
+      <tr style="border-bottom: 1px solid #f1f5f9;">
+        <td style="padding: 10px 0; text-align: left; vertical-align: top;">
+          <div style="font-weight: 700; font-size: 13px; color: #0f172a;">${item.name}</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Size: ${item.size || 'Standard'} &times; ${item.qty}</div>
+        </td>
+        <td style="padding: 10px 0; text-align: right; vertical-align: top; font-weight: 700; font-size: 13px; color: #0f172a; font-family: monospace;">
+          &#8377;${item.qty * item.sellPrice}
+        </td>
+      </tr>`
+    )
+    .join('');
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Receipt #${saleNumber} - ${businessName}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #ffffff;
+      color: #0f172a;
+      display: flex;
+      justify-content: center;
+      padding: 24px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .receipt-card {
+      width: 100%;
+      max-width: 420px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 28px 24px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+    }
+    .header { text-align: center; margin-bottom: 20px; }
+    .brand-title { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; color: #0f172a; }
+    .brand-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
+    .divider { border: 0; border-top: 1px dashed #cbd5e1; margin: 16px 0; }
+    .meta-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; font-size: 11px; margin-bottom: 16px; }
+    .meta-col { }
+    .meta-label { color: #94a3b8; font-size: 10px; text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em; }
+    .meta-val { font-weight: 700; color: #0f172a; font-size: 12px; margin-top: 2px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+    .total-box {
+      background: #f8fafc;
+      border-radius: 14px;
+      padding: 14px;
+      margin-top: 12px;
+      margin-bottom: 16px;
+    }
+    .total-row { display: flex; justify-content: space-between; font-size: 12px; color: #64748b; margin-bottom: 6px; }
+    .grand-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 16px;
+      font-weight: 800;
+      color: #0f172a;
+      padding-top: 8px;
+      border-top: 1px solid #e2e8f0;
+    }
+    .status-pill {
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      color: #059669;
+      padding: 8px 12px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .footer-msg {
+      text-align: center;
+      background: #fffbeb;
+      border: 1px solid #fef3c7;
+      border-radius: 14px;
+      padding: 12px;
+      font-size: 11.5px;
+      color: #92400e;
+      line-height: 1.5;
+    }
+    .footer-tag {
+      font-weight: 700;
+      color: #b45309;
+      margin-top: 4px;
+      display: block;
+    }
+    @media print {
+      body { padding: 0; }
+      .receipt-card { border: none; box-shadow: none; max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="receipt-card">
+    <div class="header">
+      <div class="brand-title">AuraFrame</div>
+      <div class="brand-sub">Posters &middot; Framing &middot; Art Decor</div>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="meta-grid">
+      <div class="meta-col">
+        <div class="meta-label">Receipt</div>
+        <div class="meta-val">#${saleNumber}</div>
+      </div>
+      <div class="meta-col" style="text-align: center;">
+        <div class="meta-label">Date</div>
+        <div class="meta-val">${dateStr}</div>
+      </div>
+      <div class="meta-col" style="text-align: right;">
+        <div class="meta-label">Customer</div>
+        <div class="meta-val">${customerName}</div>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr style="border-bottom: 1px solid #e2e8f0;">
+          <th style="padding-bottom: 6px; text-align: left; font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Item & Size</th>
+          <th style="padding-bottom: 6px; text-align: right; font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${itemsHtml}
+      </tbody>
+    </table>
+
+    <div class="total-box">
+      <div class="total-row">
+        <span>Subtotal</span>
+        <span style="font-family: monospace;">&#8377;${sale.subtotal}</span>
+      </div>
+      ${
+        sale.discount > 0
+          ? `<div class="total-row" style="color: #059669;">
+              <span>Discount</span>
+              <span style="font-family: monospace;">-&#8377;${sale.discount}</span>
+            </div>`
+          : ''
+      }
+      <div class="grand-total">
+        <span>Total Paid</span>
+        <span style="font-family: monospace; font-size: 18px; color: #0f172a;">&#8377;${sale.total}</span>
+      </div>
+    </div>
+
+    <div class="status-pill">
+      <span>&#10003; Paid via ${(sale.paymentMethod || 'UPI').toUpperCase()}</span>
+      <span>${timeStr}</span>
+    </div>
+
+    <div class="footer-msg">
+      <div>Thank you, <strong>${customerName}</strong>! &#128155;</div>
+      <div>Hope your walls glow with your new posters! &#10024;</div>
+      <span class="footer-tag">Tag us @aura.frame26 when you put them up &#128248;</span>
+    </div>
+  </div>
+</body>
+</html>`;
+};
+
 
