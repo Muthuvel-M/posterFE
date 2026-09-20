@@ -457,21 +457,35 @@ export const Customization = ({ onNavigate }) => {
                         Size Tiers & Rates:
                       </span>
                       <div className="flex flex-wrap gap-1.5">
-                        {sizeTiersList.map((st, i) => (
-                          <div
-                            key={i}
-                            className="px-2.5 py-1 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center gap-1.5 text-xs font-bold"
-                          >
-                            <span className="text-amber-400 font-mono font-black">{st.count || 1}×</span>
-                            <span className="text-white uppercase">{st.size || 'A4'}</span>
-                            <span className="text-zinc-400 font-normal text-[11px]">
-                              @ ₹{st.unitPrice || 0}
-                            </span>
-                            <span className="text-emerald-400 font-mono font-bold text-[11px]">
-                              = ₹{(Number(st.count) || 1) * (Number(st.unitPrice) || 0)}
-                            </span>
-                          </div>
-                        ))}
+                        {sizeTiersList.map((st, i) => {
+                          const posterP = Number(st.posterPrice) || 0;
+                          const frameP = Number(st.framePrice) || 0;
+                          const unitP = Number(st.unitPrice) || (posterP + frameP);
+                          const count = Number(st.count) || 1;
+                          const rowTotal = count * unitP;
+
+                          return (
+                            <div
+                              key={i}
+                              className="px-2.5 py-1 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center gap-1.5 text-xs font-bold"
+                            >
+                              <span className="text-amber-400 font-mono font-black">{count}×</span>
+                              <span className="text-white uppercase">{st.size || 'A4'}</span>
+                              {posterP > 0 && frameP > 0 ? (
+                                <span className="text-zinc-400 font-normal text-[10.5px]">
+                                  (P: ₹{posterP} + F: ₹{frameP})
+                                </span>
+                              ) : (
+                                <span className="text-zinc-400 font-normal text-[11px]">
+                                  @ ₹{unitP}
+                                </span>
+                              )}
+                              <span className="text-emerald-400 font-mono font-bold text-[11px]">
+                                = ₹{rowTotal}
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 

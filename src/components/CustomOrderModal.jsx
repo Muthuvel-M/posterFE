@@ -36,12 +36,12 @@ export const CustomOrderModal = ({
   const [title, setTitle] = useState('');
 
   // Multi-selected item types
-  const [itemTypes, setItemTypes] = useState(['custom_framed_poster']); // ['custom_framed_poster', 'custom_poster', 'custom_frame', 'custom_sticker']
+  const [itemTypes, setItemTypes] = useState(['custom_framed_poster']);
   const [image, setImage] = useState('');
 
-  // Size Tiers with Count & Individual Price
+  // Size Tiers with Count, Poster Price & Frame Price (No hardcoded default prices)
   const [sizeTiers, setSizeTiers] = useState([
-    { size: 'A4', count: 1, unitPrice: 150 },
+    { size: 'A4', count: 1, posterPrice: '', framePrice: '' },
   ]);
 
   // Dates
@@ -49,8 +49,8 @@ export const CustomOrderModal = ({
   const [deliveryDate, setDeliveryDate] = useState('');
 
   // Pricing & Advance
-  const [totalPrice, setTotalPrice] = useState(150);
-  const [advancePaid, setAdvancePaid] = useState(75);
+  const [totalPrice, setTotalPrice] = useState('');
+  const [advancePaid, setAdvancePaid] = useState('');
   const [customNotes, setCustomNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -72,22 +72,18 @@ export const CustomOrderModal = ({
     { id: 'custom_sticker', label: '✨ Stickers', desc: 'Custom vinyl pack' },
   ];
 
-  const presetSizes = [
-    { label: 'A6', defaultPrice: 80 },
-    { label: 'A5', defaultPrice: 100 },
-    { label: 'A4', defaultPrice: 150 },
-    { label: 'A3', defaultPrice: 250 },
-    { label: '12x18', defaultPrice: 350 },
-    { label: '18x24', defaultPrice: 500 },
-    { label: 'Custom', defaultPrice: 200 },
-  ];
+  const presetSizes = ['A6', 'A5', 'A4', 'A3', '12x18', '18x24', 'Custom'];
 
   // Helper to sync total from size tiers
   const calculateTotal = (tiers) => {
     return tiers.reduce((sum, item) => {
       const count = Math.max(1, Number(item.count) || 1);
-      const unitPrice = Math.max(0, Number(item.unitPrice) || 0);
-      return sum + count * unitPrice;
+      const posterP = Math.max(0, Number(item.posterPrice) || 0);
+      const frameP = Math.max(0, Number(item.framePrice) || 0);
+      const unitP = item.unitPrice !== undefined && item.posterPrice === '' && item.framePrice === ''
+        ? Math.max(0, Number(item.unitPrice) || 0)
+        : posterP + frameP;
+      return sum + count * unitP;
     }, 0);
   };
 
@@ -113,13 +109,15 @@ export const CustomOrderModal = ({
           order.sizeTiers.map((st) => ({
             size: st.size || 'A4',
             count: Number(st.count) || 1,
+            posterPrice: st.posterPrice !== undefined && st.posterPrice !== null ? String(st.posterPrice) : '',
+            framePrice: st.framePrice !== undefined && st.framePrice !== null ? String(st.framePrice) : '',
             unitPrice: Number(st.unitPrice) || 0,
           }))
         );
       } else {
         const legacySize = order.dimensions?.sizeType || 'A4';
-        const legacyPrice = order.pricing?.totalPrice || 150;
-        setSizeTiers([{ size: legacySize, count: 1, unitPrice: legacyPrice }]);
+        const legacyPrice = order.pricing?.totalPrice || '';
+        setSizeTiers([{ size: legacySize, count: 1, posterPrice: legacyPrice, framePrice: '' }]);
       }
 
       setImage(order.image || '');
@@ -129,12 +127,12 @@ export const CustomOrderModal = ({
       setDeliveryDate(safeDateToInput(order.deliveryDate || order.dueDate || ''));
 
       // Pricing
-      const existingTotal = order.pricing?.totalPrice ?? 150;
+      const existingTotal = order.pricing?.totalPrice !== undefined ? String(order.pricing.totalPrice) : '';
       setTotalPrice(existingTotal);
-      setAdvancePaid(order.pricing?.advancePaid ?? Math.round(existingTotal / 2));
+      setAdvancePaid(order.pricing?.advancePaid !== undefined ? String(order.pricing.advancePaid) : '');
       setCustomNotes(order.customNotes || '');
     } else {
-      // Defaults for new custom order
+      // Defaults for new custom order (No default hardcoded prices)
       setCustomerName('');
       setCustomerPhone('');
       setCustomerInstagram('');
@@ -142,19 +140,17 @@ export const CustomOrderModal = ({
       setItemTypes(['custom_framed_poster']);
       setImage('');
 
-      const initialTiers = [{ size: 'A4', count: 1, unitPrice: 150 }];
+      const initialTiers = [{ size: 'A4', count: 1, posterPrice: '', framePrice: '' }];
       setSizeTiers(initialTiers);
-
-      const calculated = calculateTotal(initialTiers);
-      setTotalPrice(calculated);
-      setAdvancePaid(Math.round(calculated / 2)); // Default 50%
+      setTotalPrice('');
+      setAdvancePaid('');
       setCustomNotes('');
 
       // Today as Order Placed Date
       const today = new Date();
       setOrderDate(safeDateToInput(today));
 
-      // 3 days from today as Delivery Date
+      // 3 days from today as initial Delivery Date
       const delivery = new Date();
       delivery.setDate(delivery.getDate() + 3);
       setDeliveryDate(safeDateToInput(delivery));
@@ -172,23 +168,24 @@ export const CustomOrderModal = ({
     });
   };
 
-  // Add new size tier
-  const handleAddSizeTier = (sizeName, defaultPrice) => {
+  // Add new size tier (clean, no hardcoded default price)
+  const handleAddSizeTier = (sizeName) => {
     setSizeTiers((prev) => {
       const existingIdx = prev.findIndex((st) => st.size === sizeName);
       let updated;
       if (existingIdx >= 0) {
-        // Increment count if already present
         updated = prev.map((st, i) =>
           i === existingIdx ? { ...st, count: Number(st.count || 1) + 1 } : st
         );
       } else {
-        updated = [...prev, { size: sizeName, count: 1, unitPrice: defaultPrice }];
+        updated = [...prev, { size: sizeName, count: 1, posterPrice: '', framePrice: '' }];
       }
       const newTotal = calculateTotal(updated);
-      setTotalPrice(newTotal);
-      if (!isEditing) {
-        setAdvancePaid(Math.round(newTotal / 2));
+      if (newTotal > 0) {
+        setTotalPrice(String(newTotal));
+        if (!isEditing && advancePaid !== '') {
+          setAdvancePaid(String(Math.round(newTotal / 2)));
+        }
       }
       return updated;
     });
@@ -201,13 +198,13 @@ export const CustomOrderModal = ({
         if (i !== index) return st;
         return {
           ...st,
-          [field]: field === 'size' ? value : Math.max(0, Number(value) || 0),
+          [field]: field === 'size' ? value : value,
         };
       });
       const newTotal = calculateTotal(updated);
-      setTotalPrice(newTotal);
-      if (!isEditing) {
-        setAdvancePaid(Math.round(newTotal / 2));
+      setTotalPrice(newTotal > 0 ? String(newTotal) : '');
+      if (!isEditing && newTotal > 0 && advancePaid !== '') {
+        setAdvancePaid(String(Math.round(newTotal / 2)));
       }
       return updated;
     });
@@ -222,23 +219,21 @@ export const CustomOrderModal = ({
       }
       const updated = prev.filter((_, i) => i !== index);
       const newTotal = calculateTotal(updated);
-      setTotalPrice(newTotal);
-      if (!isEditing) {
-        setAdvancePaid(Math.round(newTotal / 2));
-      }
+      setTotalPrice(newTotal > 0 ? String(newTotal) : '');
       return updated;
     });
   };
 
-  // Preset Delivery Date offset in days
+  // Preset Delivery Date - Clicking "Today" sets today's actual date
   const handleSetDeliveryPreset = (daysOffset) => {
-    const base = orderDate ? new Date(orderDate) : new Date();
-    const target = new Date(base);
+    const target = new Date();
     target.setDate(target.getDate() + daysOffset);
     setDeliveryDate(safeDateToInput(target));
   };
 
-  const balanceDue = Math.max(0, Number(totalPrice) - Number(advancePaid));
+  const numericTotal = Number(totalPrice) || 0;
+  const numericAdvance = Number(advancePaid) || 0;
+  const balanceDue = Math.max(0, numericTotal - numericAdvance);
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
@@ -261,12 +256,20 @@ export const CustomOrderModal = ({
       const parsedOrderDate = orderDate ? new Date(orderDate) : new Date();
       const parsedDeliveryDate = deliveryDate ? new Date(deliveryDate) : null;
 
-      const formattedTiers = sizeTiers.map((st) => ({
-        size: st.size || 'A4',
-        count: Math.max(1, Number(st.count) || 1),
-        unitPrice: Math.max(0, Number(st.unitPrice) || 0),
-        total: Math.max(1, Number(st.count) || 1) * Math.max(0, Number(st.unitPrice) || 0),
-      }));
+      const formattedTiers = sizeTiers.map((st) => {
+        const count = Math.max(1, Number(st.count) || 1);
+        const posterP = Math.max(0, Number(st.posterPrice) || 0);
+        const frameP = Math.max(0, Number(st.framePrice) || 0);
+        const unitP = posterP + frameP;
+        return {
+          size: st.size || 'A4',
+          count,
+          posterPrice: posterP,
+          framePrice: frameP,
+          unitPrice: unitP,
+          total: count * unitP,
+        };
+      });
 
       const primarySize = formattedTiers[0]?.size || 'A4';
       const typeSummary = itemTypes
@@ -274,6 +277,8 @@ export const CustomOrderModal = ({
         .join(' & ');
 
       const defaultTitle = `${customerName.trim()}'s Custom ${primarySize} ${typeSummary}`;
+
+      const finalTotal = numericTotal > 0 ? numericTotal : calculateTotal(sizeTiers);
 
       const payload = {
         title: title.trim() || defaultTitle,
@@ -295,13 +300,13 @@ export const CustomOrderModal = ({
         dueDate: parsedDeliveryDate,
         customNotes: customNotes.trim(),
         pricing: {
-          basePrice: formattedTiers[0]?.unitPrice || 0,
-          framePrice: 0,
+          basePrice: formattedTiers[0]?.posterPrice || 0,
+          framePrice: formattedTiers[0]?.framePrice || 0,
           matPrice: 0,
           glassPrice: 0,
-          totalPrice: Number(totalPrice) || 0,
-          advancePaid: Number(advancePaid) || 0,
-          balanceDue,
+          totalPrice: finalTotal,
+          advancePaid: numericAdvance,
+          balanceDue: Math.max(0, finalTotal - numericAdvance),
         },
       };
 
@@ -352,7 +357,7 @@ export const CustomOrderModal = ({
               <h2 className="text-base sm:text-lg font-black tracking-tight text-white">
                 {isEditing ? 'Edit Custom Order' : 'New Custom Order'}
               </h2>
-              <p className="text-[11px] text-zinc-400">Size tiers, multi-items, pricing & delivery dates</p>
+              <p className="text-[11px] text-zinc-400">Poster & frame rates, size tiers & delivery dates</p>
             </div>
           </div>
 
@@ -374,7 +379,7 @@ export const CustomOrderModal = ({
               1. CUSTOMER INFORMATION
             </span>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
               <div>
                 <label className="block text-[11px] font-bold text-zinc-300 mb-1">
                   Customer Name *
@@ -461,12 +466,12 @@ export const CustomOrderModal = ({
           </div>
 
           {/* ─────────────────────────────────────────────────────────────
-              SECTION 3: SIZE TIERS (COUNT & INDIVIDUAL PRICE)
+              SECTION 3: SIZE TIERS (POSTER & FRAME INDIVIDUAL PRICES)
              ───────────────────────────────────────────────────────────── */}
           <div className="p-4 rounded-2xl bg-[#18181f] border border-zinc-800/80 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block">
-                3. SIZE TIERS & INDIVIDUAL PRICES
+                3. SIZE TIERS, POSTER & FRAME RATES
               </span>
               <span className="text-[10px] font-mono font-bold text-emerald-400">
                 Total Units: {sizeTiers.reduce((acc, c) => acc + (Number(c.count) || 0), 0)}
@@ -476,114 +481,131 @@ export const CustomOrderModal = ({
             {/* Quick Add Size Tier Pills */}
             <div>
               <label className="block text-[10px] font-bold text-zinc-400 mb-1">
-                + Quick Add Size Tier:
+                + Add Size:
               </label>
               <div className="flex flex-wrap gap-1.5">
-                {presetSizes.map((preset) => (
+                {presetSizes.map((sz) => (
                   <button
-                    key={preset.label}
+                    key={sz}
                     type="button"
-                    onClick={() => handleAddSizeTier(preset.label, preset.defaultPrice)}
+                    onClick={() => handleAddSizeTier(sz)}
                     className="px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-[11px] font-bold text-amber-300 hover:text-amber-200 transition-all flex items-center gap-1 cursor-pointer active:scale-95"
                   >
                     <Plus className="w-3 h-3" />
-                    <span>{preset.label}</span>
-                    <span className="text-[9.5px] text-zinc-500 font-normal">₹{preset.defaultPrice}</span>
+                    <span>{sz}</span>
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Size Tiers Dynamic Rows */}
-            <div className="space-y-2 pt-1">
+            {/* Size Tiers Dynamic Rows with Poster Rate & Frame Rate */}
+            <div className="space-y-2.5 pt-1">
               {sizeTiers.map((tier, idx) => {
-                const rowSubtotal = (Number(tier.count) || 1) * (Number(tier.unitPrice) || 0);
+                const posterP = Number(tier.posterPrice) || 0;
+                const frameP = Number(tier.framePrice) || 0;
+                const rowUnitTotal = posterP + frameP;
+                const rowCount = Number(tier.count) || 1;
+                const rowSubtotal = rowCount * rowUnitTotal;
 
                 return (
                   <div
                     key={idx}
-                    className="p-2.5 rounded-xl bg-[#121215] border border-zinc-800/90 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 text-xs"
+                    className="p-3 rounded-2xl bg-[#121215] border border-zinc-800/90 space-y-2.5 text-xs"
                   >
-                    {/* Size Selector / Label */}
-                    <div className="w-24 shrink-0">
-                      <label className="block text-[9px] font-bold text-zinc-500 uppercase mb-0.5">
-                        Size
-                      </label>
-                      <input
-                        type="text"
-                        value={tier.size}
-                        onChange={(e) => handleUpdateTier(idx, 'size', e.target.value)}
-                        placeholder="e.g. A4"
-                        className="w-full px-2 py-1.5 rounded-lg bg-zinc-900 border border-zinc-700 font-black text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-400 uppercase text-center"
-                      />
-                    </div>
-
-                    {/* Count Stepper */}
-                    <div className="shrink-0">
-                      <label className="block text-[9px] font-bold text-zinc-500 uppercase mb-0.5 text-center">
-                        Count / Qty
-                      </label>
-                      <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-700 rounded-lg p-0.5">
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateTier(idx, 'count', Math.max(1, (Number(tier.count) || 1) - 1))}
-                          className="w-6 h-6 rounded-md hover:bg-zinc-800 text-zinc-300 flex items-center justify-center cursor-pointer transition-colors"
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
+                    {/* Top Row: Size, Count Stepper & Delete */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
                         <input
-                          type="number"
-                          min="1"
-                          value={tier.count}
-                          onChange={(e) => handleUpdateTier(idx, 'count', e.target.value)}
-                          className="w-10 text-center bg-transparent font-mono font-bold text-xs text-white focus:outline-none"
+                          type="text"
+                          value={tier.size}
+                          onChange={(e) => handleUpdateTier(idx, 'size', e.target.value)}
+                          placeholder="A4"
+                          className="w-20 px-2 py-1.5 rounded-lg bg-zinc-900 border border-zinc-700 font-black text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-400 uppercase text-center"
                         />
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateTier(idx, 'count', (Number(tier.count) || 1) + 1)}
-                          className="w-6 h-6 rounded-md hover:bg-zinc-800 text-zinc-300 flex items-center justify-center cursor-pointer transition-colors"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
+
+                        {/* Count Stepper */}
+                        <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-700 rounded-lg p-0.5">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateTier(idx, 'count', Math.max(1, (Number(tier.count) || 1) - 1))}
+                            className="w-6 h-6 rounded-md hover:bg-zinc-800 text-zinc-300 flex items-center justify-center cursor-pointer transition-colors"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <input
+                            type="number"
+                            min="1"
+                            value={tier.count}
+                            onChange={(e) => handleUpdateTier(idx, 'count', e.target.value)}
+                            className="w-9 text-center bg-transparent font-mono font-bold text-xs text-white focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateTier(idx, 'count', (Number(tier.count) || 1) + 1)}
+                            className="w-6 h-6 rounded-md hover:bg-zinc-800 text-zinc-300 flex items-center justify-center cursor-pointer transition-colors"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Row Subtotal & Delete */}
+                      <div className="flex items-center gap-2">
+                        <div className="text-right">
+                          <span className="text-[9px] font-bold text-zinc-500 uppercase block">Total</span>
+                          <span className="font-mono font-black text-xs text-emerald-400">
+                            ₹{rowSubtotal}
+                          </span>
+                        </div>
+
+                        {sizeTiers.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveTier(idx)}
+                            className="p-1.5 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-950/40 transition-colors cursor-pointer"
+                            title="Remove size tier"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
 
-                    {/* Individual Unit Price */}
-                    <div className="w-24 shrink-0">
-                      <label className="block text-[9px] font-bold text-zinc-500 uppercase mb-0.5 text-right">
-                        Unit Price (₹)
-                      </label>
-                      <div className="relative">
-                        <IndianRupee className="absolute left-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-500" />
-                        <input
-                          type="number"
-                          min="0"
-                          value={tier.unitPrice}
-                          onChange={(e) => handleUpdateTier(idx, 'unitPrice', e.target.value)}
-                          className="w-full pl-5 pr-2 py-1.5 rounded-lg bg-zinc-900 border border-zinc-700 font-mono font-bold text-xs text-amber-300 text-right focus:outline-none focus:ring-1 focus:ring-amber-400"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Row Subtotal & Delete */}
-                    <div className="flex items-center justify-end gap-2 ml-auto shrink-0 pt-3 sm:pt-0">
-                      <div className="text-right">
-                        <span className="text-[9px] font-bold text-zinc-500 block uppercase">Subtotal</span>
-                        <span className="font-mono font-black text-xs text-emerald-400">
-                          ₹{rowSubtotal}
-                        </span>
+                    {/* Bottom Row: Poster Rate + Frame Rate Inputs */}
+                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-zinc-800/60">
+                      <div>
+                        <label className="block text-[9.5px] font-bold text-zinc-400 mb-0.5">
+                          🎨 Poster Rate (₹)
+                        </label>
+                        <div className="relative">
+                          <IndianRupee className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-500" />
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            value={tier.posterPrice}
+                            onChange={(e) => handleUpdateTier(idx, 'posterPrice', e.target.value)}
+                            className="w-full pl-6 pr-2 py-1.5 rounded-lg bg-zinc-900 border border-zinc-700 font-mono font-bold text-xs text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-400 placeholder:text-zinc-600"
+                          />
+                        </div>
                       </div>
 
-                      {sizeTiers.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveTier(idx)}
-                          className="p-1.5 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-950/40 transition-colors cursor-pointer"
-                          title="Remove size tier"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                      <div>
+                        <label className="block text-[9.5px] font-bold text-zinc-400 mb-0.5">
+                          🔲 Frame Rate (₹)
+                        </label>
+                        <div className="relative">
+                          <IndianRupee className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-500" />
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            value={tier.framePrice}
+                            onChange={(e) => handleUpdateTier(idx, 'framePrice', e.target.value)}
+                            className="w-full pl-6 pr-2 py-1.5 rounded-lg bg-zinc-900 border border-zinc-700 font-mono font-bold text-xs text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-400 placeholder:text-zinc-600"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );
@@ -592,39 +614,40 @@ export const CustomOrderModal = ({
           </div>
 
           {/* ─────────────────────────────────────────────────────────────
-              SECTION 4: ORDER PLACED DATE & DELIVERY DATE
+              SECTION 4: ORDER PLACED DATE & DELIVERY DATE (Fitted & Responsive)
              ───────────────────────────────────────────────────────────── */}
-          <div className="p-4 rounded-2xl bg-[#18181f] border border-zinc-800/80 space-y-3">
+          <div className="p-4 rounded-2xl bg-[#18181f] border border-zinc-800/80 space-y-3 overflow-hidden">
             <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block">
               4. DATES (PLACED & DELIVERY)
             </span>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Date Pickers Container */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full min-w-0">
               {/* Order Placed Date */}
-              <div>
+              <div className="min-w-0 w-full">
                 <label className="block text-[11px] font-bold text-zinc-300 mb-1 flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-zinc-400" />
+                  <Clock className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                   <span>Order Placed Date</span>
                 </label>
                 <input
                   type="date"
                   value={orderDate}
                   onChange={(e) => setOrderDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-[#121215] border border-zinc-700/80 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-400 cursor-pointer"
+                  className="w-full min-w-0 max-w-full block box-border px-3 py-2 rounded-xl bg-[#121215] border border-zinc-700/80 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-400 cursor-pointer"
                 />
               </div>
 
               {/* Target Delivery Date */}
-              <div>
+              <div className="min-w-0 w-full">
                 <label className="block text-[11px] font-bold text-zinc-300 mb-1 flex items-center gap-1">
-                  <Truck className="w-3.5 h-3.5 text-amber-400" />
+                  <Truck className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <span>Expected Delivery Date</span>
                 </label>
                 <input
                   type="date"
                   value={deliveryDate}
                   onChange={(e) => setDeliveryDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-[#121215] border border-zinc-700/80 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-400 cursor-pointer"
+                  className="w-full min-w-0 max-w-full block box-border px-3 py-2 rounded-xl bg-[#121215] border border-zinc-700/80 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-400 cursor-pointer"
                 />
               </div>
             </div>
@@ -635,28 +658,32 @@ export const CustomOrderModal = ({
               <button
                 type="button"
                 onClick={() => handleSetDeliveryPreset(0)}
-                className="px-2 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-bold text-zinc-300 hover:text-white transition-colors cursor-pointer"
+                className={`px-2.5 py-1 rounded-lg border text-[10px] font-bold transition-colors cursor-pointer ${
+                  deliveryDate === safeDateToInput(new Date())
+                    ? 'bg-amber-400 text-zinc-950 border-amber-400'
+                    : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-300 hover:text-white'
+                }`}
               >
                 Today
               </button>
               <button
                 type="button"
                 onClick={() => handleSetDeliveryPreset(1)}
-                className="px-2 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-bold text-zinc-300 hover:text-white transition-colors cursor-pointer"
+                className="px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-bold text-zinc-300 hover:text-white transition-colors cursor-pointer"
               >
                 Tomorrow (+1d)
               </button>
               <button
                 type="button"
                 onClick={() => handleSetDeliveryPreset(3)}
-                className="px-2 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-bold text-amber-300 hover:text-amber-200 transition-colors cursor-pointer"
+                className="px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-bold text-amber-300 hover:text-amber-200 transition-colors cursor-pointer"
               >
                 +3 Days
               </button>
               <button
                 type="button"
                 onClick={() => handleSetDeliveryPreset(7)}
-                className="px-2 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-bold text-zinc-300 hover:text-white transition-colors cursor-pointer"
+                className="px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-bold text-zinc-300 hover:text-white transition-colors cursor-pointer"
               >
                 +1 Week
               </button>
@@ -681,13 +708,16 @@ export const CustomOrderModal = ({
                   <input
                     type="number"
                     min="0"
+                    placeholder="0"
                     value={totalPrice}
                     onChange={(e) => {
-                      const newTotal = Number(e.target.value) || 0;
+                      const newTotal = e.target.value;
                       setTotalPrice(newTotal);
-                      setAdvancePaid(Math.round(newTotal / 2));
+                      if (newTotal && advancePaid !== '') {
+                        setAdvancePaid(String(Math.round(Number(newTotal) / 2)));
+                      }
                     }}
-                    className="w-full pl-8 pr-3 py-2.5 rounded-xl bg-[#121215] border border-zinc-700 text-sm font-black text-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400 font-mono"
+                    className="w-full pl-8 pr-3 py-2.5 rounded-xl bg-[#121215] border border-zinc-700 text-sm font-black text-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400 font-mono placeholder:text-zinc-600"
                   />
                 </div>
               </div>
@@ -701,32 +731,35 @@ export const CustomOrderModal = ({
                   <input
                     type="number"
                     min="0"
-                    max={totalPrice}
+                    placeholder="0"
+                    max={numericTotal || undefined}
                     value={advancePaid}
-                    onChange={(e) => setAdvancePaid(Number(e.target.value) || 0)}
-                    className="w-full pl-8 pr-3 py-2.5 rounded-xl bg-[#121215] border border-zinc-700 text-sm font-black text-emerald-400 focus:outline-none focus:ring-2 focus:ring-amber-400 font-mono"
+                    onChange={(e) => setAdvancePaid(e.target.value)}
+                    className="w-full pl-8 pr-3 py-2.5 rounded-xl bg-[#121215] border border-zinc-700 text-sm font-black text-emerald-400 focus:outline-none focus:ring-2 focus:ring-amber-400 font-mono placeholder:text-zinc-600"
                   />
                 </div>
               </div>
             </div>
 
             {/* Quick Deposit Presets */}
-            <div className="flex items-center gap-1.5 pt-0.5">
-              <button
-                type="button"
-                onClick={() => setAdvancePaid(Math.round(Number(totalPrice) / 2))}
-                className="py-1 px-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-bold text-amber-300 transition-colors cursor-pointer"
-              >
-                50% Advance (₹{Math.round(Number(totalPrice) / 2)})
-              </button>
-              <button
-                type="button"
-                onClick={() => setAdvancePaid(Number(totalPrice))}
-                className="py-1 px-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-bold text-emerald-400 transition-colors cursor-pointer"
-              >
-                100% Full Paid (₹{Number(totalPrice)})
-              </button>
-            </div>
+            {numericTotal > 0 && (
+              <div className="flex items-center gap-1.5 pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => setAdvancePaid(String(Math.round(numericTotal / 2)))}
+                  className="py-1 px-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-bold text-amber-300 transition-colors cursor-pointer"
+                >
+                  50% Advance (₹{Math.round(numericTotal / 2)})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAdvancePaid(String(numericTotal))}
+                  className="py-1 px-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-bold text-emerald-400 transition-colors cursor-pointer"
+                >
+                  100% Full Paid (₹{numericTotal})
+                </button>
+              </div>
+            )}
 
             {/* Live Balance Summary Banner */}
             <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-between text-xs">
@@ -768,7 +801,7 @@ export const CustomOrderModal = ({
               ? 'Saving Custom Order...'
               : isEditing
               ? 'Save Changes'
-              : `Create Custom Order (${formatCurrency(totalPrice)})`}
+              : `Create Custom Order ${numericTotal > 0 ? `(${formatCurrency(numericTotal)})` : ''}`}
           </button>
         </div>
       </div>
