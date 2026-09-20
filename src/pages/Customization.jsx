@@ -228,8 +228,8 @@ export const Customization = ({ onNavigate }) => {
       />
 
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-card-in stagger-1">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-2 animate-card-in stagger-1">
+        <div className="flex items-center gap-3 min-w-0">
           {onNavigate && (
             <button
               onClick={() => onNavigate('home')}
@@ -239,29 +239,19 @@ export const Customization = ({ onNavigate }) => {
               <ArrowLeft className="w-4 h-4" />
             </button>
           )}
-          <div>
-            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
-              <span>Custom Orders</span>
-              <Palette className="w-5 h-5 text-amber-400" />
-            </h1>
-          </div>
+          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2 truncate">
+            <span>Custom Orders</span>
+            <Palette className="w-5 h-5 text-amber-400 shrink-0" />
+          </h1>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={fetchOrdersAndStats}
             className="p-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer border border-zinc-800 shadow-sm"
             title="Refresh Orders"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-amber-400' : ''}`} />
-          </button>
-
-          <button
-            onClick={handleOpenAddModal}
-            className="py-2.5 px-4 rounded-2xl bg-amber-400 hover:bg-amber-300 text-zinc-950 font-black text-xs sm:text-sm flex items-center gap-1.5 shadow-lg shadow-amber-500/25 active:scale-[0.98] transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>New Custom Order</span>
           </button>
         </div>
       </div>
@@ -317,11 +307,10 @@ export const Customization = ({ onNavigate }) => {
             <button
               key={tab.id}
               onClick={() => setStatusFilter(tab.id)}
-              className={`py-2 px-3.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${
-                statusFilter === tab.id
+              className={`py-2 px-3.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${statusFilter === tab.id
                   ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
                   : 'bg-[#151518] text-zinc-400 border border-zinc-800 hover:text-white'
-              }`}
+                }`}
             >
               {tab.label}
             </button>
@@ -360,12 +349,12 @@ export const Customization = ({ onNavigate }) => {
               Array.isArray(order?.sizeTiers) && order.sizeTiers.length > 0
                 ? order.sizeTiers
                 : [
-                    {
-                      size: order?.dimensions?.sizeType || 'A4',
-                      count: 1,
-                      unitPrice: order?.pricing?.totalPrice || 150,
-                    },
-                  ];
+                  {
+                    size: order?.dimensions?.sizeType || 'A4',
+                    count: 1,
+                    unitPrice: order?.pricing?.totalPrice || 150,
+                  },
+                ];
 
             const totalUnits = sizeTiersList.reduce((acc, c) => acc + (Number(c.count) || 1), 0);
 
@@ -511,9 +500,8 @@ export const Customization = ({ onNavigate }) => {
                     </div>
 
                     <div
-                      className={`text-xs font-black ${
-                        balanceDue > 0 ? 'text-rose-400' : 'text-emerald-400'
-                      }`}
+                      className={`text-xs font-black ${balanceDue > 0 ? 'text-rose-400' : 'text-emerald-400'
+                        }`}
                     >
                       {balanceDue > 0 ? `Due: ₹${balanceDue}` : 'Fully Paid ✓'}
                     </div>
