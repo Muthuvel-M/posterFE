@@ -18,7 +18,7 @@ import { ProductModal } from '../components/ProductModal';
 import { formatCurrency } from '../utils/formatters';
 import { api } from '../api/client';
 
-export const Products = ({ onNavigate }) => {
+export const Products = ({ onNavigate, catalogVersion = 0 }) => {
   const { showToast } = useToast();
 
   const [products, setProducts] = useState([]);
@@ -31,7 +31,7 @@ export const Products = ({ onNavigate }) => {
 
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [catalogVersion]);
 
   const fetchProducts = async () => {
     try {

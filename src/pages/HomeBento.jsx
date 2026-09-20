@@ -20,6 +20,7 @@ import { api } from '../api/client';
 
 export const HomeBento = ({
   user,
+  catalogVersion = 0,
   onNavigate,
   onOpenAddProduct,
   onOpenRawMaterial,
