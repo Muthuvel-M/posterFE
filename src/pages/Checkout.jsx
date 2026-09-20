@@ -278,10 +278,10 @@ export const Checkout = ({
           </div>
 
           {/* Category Filter Pills (Poster, Frame & Sticker) */}
-          <div className="flex items-center gap-2 pb-1 animate-card-in stagger-3">
+          <div className="flex items-center gap-2 animate-card-in stagger-3">
             <button
               type="button"
-              onClick={() => setCategoryFilter('poster')}
+              onClick={() => { setCategoryFilter('poster'); setSizeFilter('all'); }}
               className={`flex-1 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
                 categoryFilter === 'poster'
                   ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
@@ -293,7 +293,7 @@ export const Checkout = ({
 
             <button
               type="button"
-              onClick={() => setCategoryFilter('frame')}
+              onClick={() => { setCategoryFilter('frame'); setSizeFilter('all'); }}
               className={`flex-1 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
                 categoryFilter === 'frame'
                   ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
@@ -305,7 +305,7 @@ export const Checkout = ({
 
             <button
               type="button"
-              onClick={() => setCategoryFilter('sticker')}
+              onClick={() => { setCategoryFilter('sticker'); setSizeFilter('all'); }}
               className={`flex-1 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
                 categoryFilter === 'sticker'
                   ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
@@ -316,163 +316,237 @@ export const Checkout = ({
             </button>
           </div>
 
+          {/* Size Sub-filter (for Posters and Frames) */}
+          {categoryFilter !== 'sticker' && (
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar animate-card-in">
+              {['all', 'A4', 'A5', 'A6'].map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => setSizeFilter(size)}
+                  className={`px-3 py-1 rounded-xl text-[10.5px] font-bold uppercase transition-all cursor-pointer ${
+                    sizeFilter === size
+                      ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40 shadow-sm'
+                      : 'bg-zinc-900/80 text-zinc-400 border border-zinc-800/80 hover:text-zinc-200'
+                  }`}
+                >
+                  {size === 'all' ? 'All Sizes' : size}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Products View */}
           {categoryFilter === 'sticker' ? (
             <div key="stickers-view" className="space-y-4 animate-card-in stagger-4">
               {/* Dedicated 2-Card Tier Display for ₹15 and ₹30 Stickers */}
-              <div className="grid grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-2 gap-3 sm:gap-3.5">
                 {/* 1. ₹15 Sticker Card */}
-                <div className="p-3 sm:p-4 rounded-3xl bg-[#1e1f26] border border-amber-500/30 flex flex-col justify-between relative group hover:border-amber-400/60 transition-all shadow-md animate-card-in">
-                  <div className="flex items-center justify-between mb-2 z-10">
-                    <span className="px-2 py-0.5 rounded-md bg-amber-400/20 border border-amber-400/40 text-[10px] font-extrabold text-amber-300 uppercase tracking-wide">
-                      ✨ ₹15 Tier
-                    </span>
-
-                    {sticker15Qty === 0 ? (
-                      <button
-                        type="button"
-                        onClick={() => handleQuickAddSticker(15)}
-                        className="w-8 h-8 rounded-xl bg-[#f59e0b] hover:bg-[#d97706] text-white flex items-center justify-center shadow-md shadow-amber-500/20 active:scale-95 transition-all cursor-pointer"
-                        title="Add ₹15 Sticker"
-                      >
-                        <Plus className="w-4 h-4 stroke-[2.5]" />
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-1.5 bg-[#34d399] text-zinc-950 px-2 py-1 rounded-xl font-black text-xs shadow-md animate-scale-up">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const target =
-                              sticker15Product ||
-                              cartItems.find(
-                                (i) => i.product.category === 'sticker' && i.sellPrice === 15
-                              )?.product;
-                            if (target) updateQty(target._id, sticker15Qty - 1);
-                          }}
-                          className="p-0.5 hover:bg-black/10 rounded cursor-pointer"
-                        >
-                          <Minus className="w-3 h-3 stroke-[2.5]" />
-                        </button>
-                        <span className="w-3.5 text-center font-black">{sticker15Qty}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleQuickAddSticker(15)}
-                          className="p-0.5 hover:bg-black/10 rounded cursor-pointer"
-                        >
-                          <Plus className="w-3 h-3 stroke-[2.5]" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Artwork / Icon Preview */}
-                  <div className="w-full aspect-square rounded-2xl overflow-hidden bg-gradient-to-br from-amber-500/10 via-zinc-900 to-yellow-500/10 mb-3 flex items-center justify-center relative border border-zinc-800/60 group-hover:scale-[1.02] transition-transform">
+                <div
+                  onClick={() => handleQuickAddSticker(15)}
+                  className={`rounded-2xl sm:rounded-[22px] overflow-hidden transition-all duration-300 flex flex-col justify-between cursor-pointer select-none group active:scale-[0.98] shadow-md ${
+                    sticker15Qty > 0
+                      ? 'bg-gradient-to-b from-[#242116] via-[#1a1812] to-[#141417] border-2 border-amber-400 ring-2 ring-amber-400/20 shadow-amber-500/10'
+                      : 'bg-[#16161a] hover:bg-[#1c1c22] border border-zinc-800/80 hover:border-zinc-700'
+                  }`}
+                >
+                  {/* Image / Icon Header */}
+                  <div className="relative w-full aspect-square bg-[#0e0e11] overflow-hidden flex items-center justify-center">
                     {sticker15Product?.image ? (
                       <img
                         src={sticker15Product.image}
                         alt="₹15 Sticker"
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     ) : (
-                      <div className="text-center p-2">
-                        <span className="text-4xl block mb-1">✨</span>
+                      <div className="text-center p-3">
+                        <span className="text-5xl block mb-1 drop-shadow-md">✨</span>
                         <span className="text-[10px] font-black uppercase text-amber-300 tracking-wider">Small Sticker</span>
                       </div>
                     )}
+
+                    {/* Top-Left Pill */}
+                    <div className="absolute top-2.5 left-2.5 z-10">
+                      <span className="px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/10 text-[9.5px] font-black uppercase tracking-wider text-amber-300 shadow-sm">
+                        ₹15 Tier
+                      </span>
+                    </div>
+
+                    {/* Top-Right Action: Unselected (+) vs Selected ([-] Qty [+]) */}
+                    <div className="absolute top-2.5 right-2.5 z-10">
+                      {sticker15Qty === 0 ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleQuickAddSticker(15);
+                          }}
+                          className="w-8 h-8 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 flex items-center justify-center font-black shadow-lg shadow-amber-400/30 group-hover:scale-110 active:scale-90 transition-all cursor-pointer"
+                          title="Add ₹15 Sticker"
+                        >
+                          <Plus className="w-4 h-4 stroke-[3]" />
+                        </button>
+                      ) : (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-1.5 bg-gradient-to-r from-amber-400 to-yellow-400 text-zinc-950 px-2 py-1 rounded-xl font-black text-xs shadow-lg shadow-amber-400/30 ring-2 ring-zinc-950 animate-scale-up"
+                        >
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const target =
+                                sticker15Product ||
+                                cartItems.find(
+                                  (i) => i.product.category === 'sticker' && i.sellPrice === 15
+                                )?.product;
+                              if (target) updateQty(target._id, sticker15Qty - 1);
+                            }}
+                            className="w-5 h-5 rounded-lg hover:bg-black/15 flex items-center justify-center transition-colors cursor-pointer"
+                            title="Decrease"
+                          >
+                            <Minus className="w-3.5 h-3.5 stroke-[3]" />
+                          </button>
+                          <span className="min-w-[16px] text-center font-black text-xs">{sticker15Qty}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleQuickAddSticker(15);
+                            }}
+                            className="w-5 h-5 rounded-lg hover:bg-black/15 flex items-center justify-center transition-colors cursor-pointer"
+                            title="Add one more"
+                          >
+                            <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Title & Price */}
-                  <div>
-                    <h3 className="text-xs sm:text-sm font-bold text-white group-hover:text-amber-300 transition-colors truncate">
-                      {sticker15Product?.name || '₹15 Small Sticker'}
+                  {/* Info Footer */}
+                  <div className="p-3 sm:p-3.5 space-y-1 bg-[#121215]/90 border-t border-zinc-800/60">
+                    <h3 className="text-xs sm:text-[13px] font-extrabold text-white group-hover:text-amber-300 transition-colors truncate">
+                      {sticker15Product?.name || '₹15 Small Holographic'}
                     </h3>
-                    <div className="text-sm sm:text-base font-black text-amber-400 mt-0.5 flex items-baseline gap-1.5">
-                      <span>₹15</span>
-                      <span className="text-[10px] text-zinc-400 font-normal">per unit</span>
+                    <div className="flex items-baseline justify-between pt-0.5">
+                      <span className="text-sm sm:text-base font-black text-amber-400 tracking-tight">₹15</span>
+                      <span className="text-[10px] font-semibold text-zinc-400">per piece</span>
                     </div>
-                    <p className="text-[10px] mt-0.5 font-medium text-emerald-400">
+                    <p className="text-[9.5px] font-bold text-emerald-400 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                       {sticker15Product ? `${sticker15Product.stock} in stock` : 'In stock'}
                     </p>
                   </div>
+
+                  {/* Active highlight line */}
+                  {sticker15Qty > 0 && <div className="h-1 bg-gradient-to-r from-amber-400 to-yellow-300 w-full" />}
                 </div>
 
                 {/* 2. ₹30 Sticker Card */}
-                <div className="p-3 sm:p-4 rounded-3xl bg-[#1e1f26] border border-amber-500/30 flex flex-col justify-between relative group hover:border-amber-400/60 transition-all shadow-md animate-card-in">
-                  <div className="flex items-center justify-between mb-2 z-10">
-                    <span className="px-2 py-0.5 rounded-md bg-yellow-400/20 border border-yellow-400/40 text-[10px] font-extrabold text-yellow-300 uppercase tracking-wide">
-                      🌟 ₹30 Tier
-                    </span>
-
-                    {sticker30Qty === 0 ? (
-                      <button
-                        type="button"
-                        onClick={() => handleQuickAddSticker(30)}
-                        className="w-8 h-8 rounded-xl bg-[#f59e0b] hover:bg-[#d97706] text-white flex items-center justify-center shadow-md shadow-amber-500/20 active:scale-95 transition-all cursor-pointer"
-                        title="Add ₹30 Sticker"
-                      >
-                        <Plus className="w-4 h-4 stroke-[2.5]" />
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-1.5 bg-[#34d399] text-zinc-950 px-2 py-1 rounded-xl font-black text-xs shadow-md animate-scale-up">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const target =
-                              sticker30Product ||
-                              cartItems.find(
-                                (i) => i.product.category === 'sticker' && i.sellPrice === 30
-                              )?.product;
-                            if (target) updateQty(target._id, sticker30Qty - 1);
-                          }}
-                          className="p-0.5 hover:bg-black/10 rounded cursor-pointer"
-                        >
-                          <Minus className="w-3 h-3 stroke-[2.5]" />
-                        </button>
-                        <span className="w-3.5 text-center font-black">{sticker30Qty}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleQuickAddSticker(30)}
-                          className="p-0.5 hover:bg-black/10 rounded cursor-pointer"
-                        >
-                          <Plus className="w-3 h-3 stroke-[2.5]" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Artwork / Icon Preview */}
-                  <div className="w-full aspect-square rounded-2xl overflow-hidden bg-gradient-to-br from-yellow-500/10 via-zinc-900 to-amber-500/10 mb-3 flex items-center justify-center relative border border-zinc-800/60 group-hover:scale-[1.02] transition-transform">
+                <div
+                  onClick={() => handleQuickAddSticker(30)}
+                  className={`rounded-2xl sm:rounded-[22px] overflow-hidden transition-all duration-300 flex flex-col justify-between cursor-pointer select-none group active:scale-[0.98] shadow-md ${
+                    sticker30Qty > 0
+                      ? 'bg-gradient-to-b from-[#242116] via-[#1a1812] to-[#141417] border-2 border-amber-400 ring-2 ring-amber-400/20 shadow-amber-500/10'
+                      : 'bg-[#16161a] hover:bg-[#1c1c22] border border-zinc-800/80 hover:border-zinc-700'
+                  }`}
+                >
+                  {/* Image / Icon Header */}
+                  <div className="relative w-full aspect-square bg-[#0e0e11] overflow-hidden flex items-center justify-center">
                     {sticker30Product?.image ? (
                       <img
                         src={sticker30Product.image}
                         alt="₹30 Sticker"
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     ) : (
-                      <div className="text-center p-2">
-                        <span className="text-4xl block mb-1">🌟</span>
-                        <span className="text-[10px] font-black uppercase text-yellow-300 tracking-wider">Premium Sticker</span>
+                      <div className="text-center p-3">
+                        <span className="text-5xl block mb-1 drop-shadow-md">🌟</span>
+                        <span className="text-[10px] font-black uppercase text-yellow-300 tracking-wider">Premium Die-Cut</span>
                       </div>
                     )}
+
+                    {/* Top-Left Pill */}
+                    <div className="absolute top-2.5 left-2.5 z-10">
+                      <span className="px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/10 text-[9.5px] font-black uppercase tracking-wider text-amber-300 shadow-sm">
+                        ₹30 Tier
+                      </span>
+                    </div>
+
+                    {/* Top-Right Action */}
+                    <div className="absolute top-2.5 right-2.5 z-10">
+                      {sticker30Qty === 0 ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleQuickAddSticker(30);
+                          }}
+                          className="w-8 h-8 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 flex items-center justify-center font-black shadow-lg shadow-amber-400/30 group-hover:scale-110 active:scale-90 transition-all cursor-pointer"
+                          title="Add ₹30 Sticker"
+                        >
+                          <Plus className="w-4 h-4 stroke-[3]" />
+                        </button>
+                      ) : (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-1.5 bg-gradient-to-r from-amber-400 to-yellow-400 text-zinc-950 px-2 py-1 rounded-xl font-black text-xs shadow-lg shadow-amber-400/30 ring-2 ring-zinc-950 animate-scale-up"
+                        >
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const target =
+                                sticker30Product ||
+                                cartItems.find(
+                                  (i) => i.product.category === 'sticker' && i.sellPrice === 30
+                                )?.product;
+                              if (target) updateQty(target._id, sticker30Qty - 1);
+                            }}
+                            className="w-5 h-5 rounded-lg hover:bg-black/15 flex items-center justify-center transition-colors cursor-pointer"
+                            title="Decrease"
+                          >
+                            <Minus className="w-3.5 h-3.5 stroke-[3]" />
+                          </button>
+                          <span className="min-w-[16px] text-center font-black text-xs">{sticker30Qty}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleQuickAddSticker(30);
+                            }}
+                            className="w-5 h-5 rounded-lg hover:bg-black/15 flex items-center justify-center transition-colors cursor-pointer"
+                            title="Add one more"
+                          >
+                            <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Title & Price */}
-                  <div>
-                    <h3 className="text-xs sm:text-sm font-bold text-white group-hover:text-amber-300 transition-colors truncate">
-                      {sticker30Product?.name || '₹30 Premium Sticker'}
+                  {/* Info Footer */}
+                  <div className="p-3 sm:p-3.5 space-y-1 bg-[#121215]/90 border-t border-zinc-800/60">
+                    <h3 className="text-xs sm:text-[13px] font-extrabold text-white group-hover:text-amber-300 transition-colors truncate">
+                      {sticker30Product?.name || '₹30 Premium Die-Cut'}
                     </h3>
-                    <div className="text-sm sm:text-base font-black text-amber-400 mt-0.5 flex items-baseline gap-1.5">
-                      <span>₹30</span>
-                      <span className="text-[10px] text-zinc-400 font-normal">per unit</span>
+                    <div className="flex items-baseline justify-between pt-0.5">
+                      <span className="text-sm sm:text-base font-black text-amber-400 tracking-tight">₹30</span>
+                      <span className="text-[10px] font-semibold text-zinc-400">per piece</span>
                     </div>
-                    <p className="text-[10px] mt-0.5 font-medium text-emerald-400">
+                    <p className="text-[9.5px] font-bold text-emerald-400 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                       {sticker30Product ? `${sticker30Product.stock} in stock` : 'In stock'}
                     </p>
                   </div>
+
+                  {/* Active highlight line */}
+                  {sticker30Qty > 0 && <div className="h-1 bg-gradient-to-r from-amber-400 to-yellow-300 w-full" />}
                 </div>
               </div>
 
-              {/* Additional Custom Stickers from DB (if any with custom designs) */}
+              {/* Additional Custom Stickers from DB (if any) */}
               {filteredProducts.filter(
                 (p) =>
                   p._id !== sticker15Product?._id &&
@@ -482,7 +556,7 @@ export const Checkout = ({
                   <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400 block mb-2.5">
                     CUSTOM DESIGNS & MORE STICKERS
                   </span>
-                  <div className="grid grid-cols-2 gap-3.5">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-3.5">
                     {filteredProducts
                       .filter(
                         (p) =>
@@ -496,72 +570,106 @@ export const Checkout = ({
                         return (
                           <div
                             key={p._id}
+                            onClick={() => {
+                              if (!isOutOfStock && inCartQty === 0) {
+                                addToCart(p);
+                              }
+                            }}
                             style={{ animationDelay: `${70 + idx * 30}ms` }}
-                            className="p-3 sm:p-4 rounded-3xl bg-[#1e1f26] border border-zinc-800/80 flex flex-col justify-between relative group hover:border-zinc-700 transition-all shadow-md animate-card-in"
+                            className={`rounded-2xl sm:rounded-[22px] overflow-hidden transition-all duration-300 flex flex-col justify-between cursor-pointer select-none group active:scale-[0.98] shadow-md ${
+                              isOutOfStock
+                                ? 'opacity-60 grayscale-[40%] cursor-not-allowed bg-[#141417] border border-zinc-800/40'
+                                : inCartQty > 0
+                                ? 'bg-gradient-to-b from-[#242116] via-[#1a1812] to-[#141417] border-2 border-amber-400 ring-2 ring-amber-400/20 shadow-amber-500/10'
+                                : 'bg-[#16161a] hover:bg-[#1c1c22] border border-zinc-800/80 hover:border-zinc-700'
+                            }`}
                           >
-                            <div className="flex items-center justify-between mb-2 z-10">
-                              <span className="px-2 py-0.5 rounded-md bg-zinc-900/80 border border-zinc-700/60 text-[10px] font-extrabold text-amber-300 uppercase tracking-wide">
-                                {p.size || 'Sticker'}
-                              </span>
-
-                              {inCartQty === 0 ? (
-                                <button
-                                  type="button"
-                                  disabled={isOutOfStock}
-                                  onClick={() => addToCart(p)}
-                                  className="w-8 h-8 rounded-xl bg-[#f59e0b] hover:bg-[#d97706] text-white flex items-center justify-center shadow-md shadow-amber-500/20 active:scale-95 transition-all disabled:opacity-30 cursor-pointer"
-                                  title="Add to order"
-                                >
-                                  <Plus className="w-4 h-4 stroke-[2.5]" />
-                                </button>
-                              ) : (
-                                <div className="flex items-center gap-1.5 bg-[#34d399] text-zinc-950 px-2 py-1 rounded-xl font-black text-xs shadow-md animate-scale-up">
-                                  <button
-                                    type="button"
-                                    onClick={() => updateQty(p._id, inCartQty - 1)}
-                                    className="p-0.5 hover:bg-black/10 rounded cursor-pointer"
-                                  >
-                                    <Minus className="w-3 h-3 stroke-[2.5]" />
-                                  </button>
-                                  <span className="w-3.5 text-center font-black">{inCartQty}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => updateQty(p._id, inCartQty + 1)}
-                                    className="p-0.5 hover:bg-black/10 rounded cursor-pointer"
-                                  >
-                                    <Plus className="w-3 h-3 stroke-[2.5]" />
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="w-full aspect-square rounded-2xl overflow-hidden bg-zinc-900 mb-3 flex items-center justify-center relative">
+                            <div className="relative w-full aspect-square bg-[#0e0e11] overflow-hidden flex items-center justify-center">
                               {p.image ? (
                                 <img
                                   src={p.image}
                                   alt={p.name}
-                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                 />
                               ) : (
                                 <div className="text-4xl">{p.emoji || '✨'}</div>
                               )}
+
+                              <div className="absolute top-2.5 left-2.5 z-10">
+                                <span className="px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/10 text-[9.5px] font-black uppercase tracking-wider text-amber-300 shadow-sm">
+                                  {p.size || 'Sticker'}
+                                </span>
+                              </div>
+
+                              <div className="absolute top-2.5 right-2.5 z-10">
+                                {inCartQty === 0 ? (
+                                  <button
+                                    type="button"
+                                    disabled={isOutOfStock}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      addToCart(p);
+                                    }}
+                                    className="w-8 h-8 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 flex items-center justify-center font-black shadow-lg shadow-amber-400/30 group-hover:scale-110 active:scale-90 transition-all disabled:opacity-30 cursor-pointer"
+                                    title="Add to order"
+                                  >
+                                    <Plus className="w-4 h-4 stroke-[3]" />
+                                  </button>
+                                ) : (
+                                  <div
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="flex items-center gap-1.5 bg-gradient-to-r from-amber-400 to-yellow-400 text-zinc-950 px-2 py-1 rounded-xl font-black text-xs shadow-lg shadow-amber-400/30 ring-2 ring-zinc-950 animate-scale-up"
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        updateQty(p._id, inCartQty - 1);
+                                      }}
+                                      className="w-5 h-5 rounded-lg hover:bg-black/15 flex items-center justify-center transition-colors cursor-pointer"
+                                    >
+                                      <Minus className="w-3.5 h-3.5 stroke-[3]" />
+                                    </button>
+                                    <span className="min-w-[16px] text-center font-black text-xs">{inCartQty}</span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        updateQty(p._id, inCartQty + 1);
+                                      }}
+                                      className="w-5 h-5 rounded-lg hover:bg-black/15 flex items-center justify-center transition-colors cursor-pointer"
+                                    >
+                                      <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
 
-                            <div>
-                              <h3 className="text-xs sm:text-sm font-bold text-white truncate group-hover:text-amber-300 transition-colors">
+                            <div className="p-3 sm:p-3.5 space-y-1 bg-[#121215]/90 border-t border-zinc-800/60">
+                              <h3 className="text-xs sm:text-[13px] font-extrabold text-white truncate group-hover:text-amber-300 transition-colors">
                                 {p.name}
                               </h3>
-                              <div className="text-sm sm:text-base font-black text-white mt-0.5">
-                                {formatCurrency(p.sellPrice)}
+                              <div className="flex items-baseline justify-between pt-0.5">
+                                <span className="text-sm sm:text-base font-black text-amber-400 tracking-tight">
+                                  {formatCurrency(p.sellPrice)}
+                                </span>
                               </div>
                               <p
-                                className={`text-[10px] mt-0.5 font-medium ${
-                                  isOutOfStock ? 'text-rose-400 font-bold' : 'text-emerald-400'
+                                className={`text-[9.5px] font-bold flex items-center gap-1 ${
+                                  isOutOfStock ? 'text-rose-400' : 'text-emerald-400'
                                 }`}
                               >
+                                <span
+                                  className={`w-1.5 h-1.5 rounded-full ${
+                                    isOutOfStock ? 'bg-rose-400' : 'bg-emerald-400'
+                                  }`}
+                                ></span>
                                 {isOutOfStock ? 'Out of stock' : `${p.stock} in stock`}
                               </p>
                             </div>
+
+                            {inCartQty > 0 && <div className="h-1 bg-gradient-to-r from-amber-400 to-yellow-300 w-full" />}
                           </div>
                         );
                       })}
@@ -570,11 +678,11 @@ export const Checkout = ({
               )}
             </div>
           ) : (
-            /* Posters & Frames Grid (2 Columns) */
+            /* Posters & Frames Grid (2 Columns) - Redesigned Card with Click-to-Add */
             loading ? (
-              <div className="grid grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-2 gap-3 sm:gap-3.5">
                 {[...Array(6)].map((_, i) => (
-                  <div key={i} className="h-56 rounded-3xl bg-[#151518] animate-pulse" />
+                  <div key={i} className="h-60 rounded-2xl bg-[#151518] animate-pulse border border-zinc-800/40" />
                 ))}
               </div>
             ) : filteredProducts.length === 0 ? (
@@ -597,7 +705,7 @@ export const Checkout = ({
                 )}
               </div>
             ) : (
-              <div key={categoryFilter} className="grid grid-cols-2 gap-3.5">
+              <div key={categoryFilter} className="grid grid-cols-2 gap-3 sm:gap-3.5">
                 {filteredProducts.map((p, idx) => {
                   const inCartQty = getCartItemQty(p._id);
                   const isOutOfStock = p.stock <= 0;
@@ -605,82 +713,130 @@ export const Checkout = ({
                   return (
                     <div
                       key={p._id}
+                      onClick={() => {
+                        if (!isOutOfStock && inCartQty === 0) {
+                          addToCart(p);
+                        }
+                      }}
                       style={{ animationDelay: `${70 + idx * 30}ms` }}
-                      className="p-3 sm:p-4 rounded-3xl bg-[#1e1f26] border border-zinc-800/80 flex flex-col justify-between relative group hover:border-zinc-700 transition-all shadow-md animate-card-in"
+                      className={`rounded-2xl sm:rounded-[22px] overflow-hidden transition-all duration-300 flex flex-col justify-between cursor-pointer select-none group active:scale-[0.98] shadow-md ${
+                        isOutOfStock
+                          ? 'opacity-60 grayscale-[40%] cursor-not-allowed bg-[#141417] border border-zinc-800/40'
+                          : inCartQty > 0
+                          ? 'bg-gradient-to-b from-[#242116] via-[#1a1812] to-[#141417] border-2 border-amber-400 ring-2 ring-amber-400/20 shadow-amber-500/10'
+                          : 'bg-[#16161a] hover:bg-[#1c1c22] border border-zinc-800/80 hover:border-zinc-700'
+                      }`}
                     >
-                      {/* Top Action Button: Unselected (Orange +) vs Selected (Mint [- Qty +]) */}
-                      <div className="flex items-center justify-between mb-2 z-10">
-                        <span className="px-2 py-0.5 rounded-md bg-zinc-900/80 border border-zinc-700/60 text-[10px] font-extrabold text-amber-300 uppercase tracking-wide">
-                          {p.size || (p.category === 'frame' ? 'Frame' : 'Poster')}
-                        </span>
-
-                        {inCartQty === 0 ? (
-                          <button
-                            type="button"
-                            disabled={isOutOfStock}
-                            onClick={() => addToCart(p)}
-                            className="w-8 h-8 rounded-xl bg-[#f59e0b] hover:bg-[#d97706] text-white flex items-center justify-center shadow-md shadow-amber-500/20 active:scale-95 transition-all disabled:opacity-30 cursor-pointer"
-                            title="Add to order"
-                          >
-                            <Plus className="w-4 h-4 stroke-[2.5]" />
-                          </button>
-                        ) : (
-                          <div className="flex items-center gap-1.5 bg-[#34d399] text-zinc-950 px-2 py-1 rounded-xl font-black text-xs shadow-md animate-scale-up">
-                            <button
-                              type="button"
-                              onClick={() => updateQty(p._id, inCartQty - 1)}
-                              className="p-0.5 hover:bg-black/10 rounded cursor-pointer"
-                            >
-                              <Minus className="w-3 h-3 stroke-[2.5]" />
-                            </button>
-                            <span className="w-3.5 text-center font-black">{inCartQty}</span>
-                            <button
-                              type="button"
-                              onClick={() => updateQty(p._id, inCartQty + 1)}
-                              className="p-0.5 hover:bg-black/10 rounded cursor-pointer"
-                            >
-                              <Plus className="w-3 h-3 stroke-[2.5]" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Centered Artwork Image / Emoji Preview */}
-                      <div className="w-full aspect-square rounded-2xl overflow-hidden bg-zinc-900 mb-3 flex items-center justify-center relative">
+                      {/* Image Preview Container */}
+                      <div className="relative w-full aspect-square bg-[#0e0e11] overflow-hidden flex items-center justify-center">
                         {p.image ? (
                           <img
                             src={p.image}
                             alt={p.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                           />
                         ) : (
                           <div className="text-4xl">{p.emoji || (p.category === 'frame' ? '🔲' : '🖼️')}</div>
                         )}
-                      </div>
 
-                      {/* Title, Price & Stock */}
-                      <div>
-                        <h3 className="text-xs sm:text-sm font-bold text-white truncate group-hover:text-amber-300 transition-colors">
-                          {p.name}
-                        </h3>
-                        <div className="text-sm sm:text-base font-black text-white mt-0.5 flex items-baseline gap-1.5">
-                          <span>{formatCurrency(p.sellPrice)}</span>
-                          {p.category === 'frame' && (
-                            <span className="text-[10px] text-zinc-400 font-normal">Frame</span>
+                        {/* Top-Left Size / Category Pill */}
+                        <div className="absolute top-2.5 left-2.5 z-10">
+                          <span className="px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/10 text-[9.5px] font-black uppercase tracking-wider text-amber-300 shadow-sm">
+                            {p.size || (p.category === 'frame' ? 'Frame' : 'Poster')}
+                          </span>
+                        </div>
+
+                        {/* Top-Right Action: Unselected (+) vs Selected ([-] Qty [+]) */}
+                        <div className="absolute top-2.5 right-2.5 z-10">
+                          {inCartQty === 0 ? (
+                            <button
+                              type="button"
+                              disabled={isOutOfStock}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                addToCart(p);
+                              }}
+                              className="w-8 h-8 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 flex items-center justify-center font-black shadow-lg shadow-amber-400/30 group-hover:scale-110 active:scale-90 transition-all disabled:opacity-30 cursor-pointer"
+                              title="Add to cart"
+                            >
+                              <Plus className="w-4 h-4 stroke-[3]" />
+                            </button>
+                          ) : (
+                            <div
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex items-center gap-1.5 bg-gradient-to-r from-amber-400 to-yellow-400 text-zinc-950 px-2 py-1 rounded-xl font-black text-xs shadow-lg shadow-amber-400/30 ring-2 ring-zinc-950 animate-scale-up"
+                            >
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateQty(p._id, inCartQty - 1);
+                                }}
+                                className="w-5 h-5 rounded-lg hover:bg-black/15 flex items-center justify-center transition-colors cursor-pointer"
+                                title="Decrease"
+                              >
+                                <Minus className="w-3.5 h-3.5 stroke-[3]" />
+                              </button>
+                              <span className="min-w-[16px] text-center font-black text-xs">{inCartQty}</span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateQty(p._id, inCartQty + 1);
+                                }}
+                                className="w-5 h-5 rounded-lg hover:bg-black/15 flex items-center justify-center transition-colors cursor-pointer"
+                                title="Increase"
+                              >
+                                <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                              </button>
+                            </div>
                           )}
                         </div>
+                      </div>
+
+                      {/* Info Footer */}
+                      <div className="p-3 sm:p-3.5 space-y-1 bg-[#121215]/90 border-t border-zinc-800/60">
+                        <h3 className="text-xs sm:text-[13px] font-extrabold text-white truncate group-hover:text-amber-300 transition-colors">
+                          {p.name}
+                        </h3>
+
+                        <div className="flex items-baseline justify-between pt-0.5">
+                          <span className="text-sm sm:text-base font-black text-amber-400 tracking-tight">
+                            {formatCurrency(p.sellPrice)}
+                          </span>
+                          {p.category === 'frame' && (
+                            <span className="text-[10px] text-zinc-400 font-medium">Frame</span>
+                          )}
+                        </div>
+
                         <p
-                          className={`text-[10px] mt-0.5 font-medium ${
+                          className={`text-[9.5px] font-bold flex items-center gap-1 ${
                             isOutOfStock
-                              ? 'text-rose-400 font-bold'
+                              ? 'text-rose-400'
                               : p.stock <= p.lowStockThreshold
                               ? 'text-amber-400'
                               : 'text-emerald-400'
                           }`}
                         >
-                          {isOutOfStock ? 'Out of stock' : `${p.stock} in stock`}
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              isOutOfStock
+                                ? 'bg-rose-400'
+                                : p.stock <= p.lowStockThreshold
+                                ? 'bg-amber-400'
+                                : 'bg-emerald-400'
+                            }`}
+                          ></span>
+                          {isOutOfStock
+                            ? 'Out of stock'
+                            : p.stock <= p.lowStockThreshold
+                            ? `Only ${p.stock} left`
+                            : `${p.stock} in stock`}
                         </p>
                       </div>
+
+                      {/* Active highlight line */}
+                      {inCartQty > 0 && <div className="h-1 bg-gradient-to-r from-amber-400 to-yellow-300 w-full" />}
                     </div>
                   );
                 })}
