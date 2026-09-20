@@ -71,13 +71,16 @@ export const Inventory = () => {
     });
   };
 
-  // Filtered Products by category ('poster' or 'frame')
+  // Filtered Products by category ('poster', 'frame', 'sticker')
   const filteredProducts = products.filter((p) => {
     if (activeFilter === 'poster') {
       return !p.category || p.category.toLowerCase() === 'poster';
     }
     if (activeFilter === 'frame') {
       return p.category && p.category.toLowerCase() === 'frame';
+    }
+    if (activeFilter === 'sticker') {
+      return p.category && p.category.toLowerCase() === 'sticker';
     }
     return true;
   });
@@ -126,9 +129,10 @@ export const Inventory = () => {
         </div>
       </div>
 
-      {/* Category Chips: Poster & Frame only (Requirement #10) */}
-      <div className="flex items-center gap-2.5 pb-1 animate-card-in stagger-2">
+      {/* Category Chips: Poster, Frame & Sticker */}
+      <div className="flex items-center gap-2 pb-1 animate-card-in stagger-2">
         <button
+          type="button"
           onClick={() => setActiveFilter('poster')}
           className={`flex-1 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
             activeFilter === 'poster'
@@ -140,6 +144,7 @@ export const Inventory = () => {
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveFilter('frame')}
           className={`flex-1 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
             activeFilter === 'frame'
@@ -148,6 +153,18 @@ export const Inventory = () => {
           }`}
         >
           🔲 Frame
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveFilter('sticker')}
+          className={`flex-1 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
+            activeFilter === 'sticker'
+              ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
+              : 'bg-[#151518] text-zinc-400 border border-zinc-800 hover:text-white'
+          }`}
+        >
+          ✨ Sticker
         </button>
       </div>
 

@@ -3,6 +3,9 @@
  * Example: formatCurrency(1250) => ₹1,250
  */
 export const formatCurrency = (amount) => {
+  if (amount === null || amount === undefined || isNaN(Number(amount))) {
+    return '₹0';
+  }
   const numeric = typeof amount === 'number' ? amount : Number(amount) || 0;
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
@@ -17,6 +20,7 @@ export const formatCurrency = (amount) => {
 export const formatDate = (dateInput) => {
   if (!dateInput) return '-';
   const date = new Date(dateInput);
+  if (isNaN(date.getTime())) return '-';
   return date.toLocaleDateString('en-IN', {
     day: 'numeric',
     month: 'short',
@@ -30,6 +34,7 @@ export const formatDate = (dateInput) => {
 export const formatDateTime = (dateInput) => {
   if (!dateInput) return '-';
   const date = new Date(dateInput);
+  if (isNaN(date.getTime())) return '-';
   return date.toLocaleDateString('en-IN', {
     day: 'numeric',
     month: 'short',

@@ -170,6 +170,7 @@ export const Products = ({ onNavigate }) => {
               <option value="all">All Categories</option>
               <option value="poster">Posters</option>
               <option value="frame">Frames</option>
+              <option value="sticker">Stickers</option>
             </select>
 
             <select
@@ -181,6 +182,8 @@ export const Products = ({ onNavigate }) => {
               <option value="A4">A4</option>
               <option value="A5">A5</option>
               <option value="A6">A6</option>
+              <option value="₹15">₹15</option>
+              <option value="₹30">₹30</option>
               <option value="custom">Custom</option>
             </select>
           </div>
@@ -221,8 +224,8 @@ export const Products = ({ onNavigate }) => {
                           {p.image ? (
                             <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-zinc-500">
-                              <ImageIcon className="w-4 h-4" />
+                            <div className="w-full h-full flex items-center justify-center text-zinc-500 text-base">
+                              {p.category === 'sticker' ? '✨' : p.category === 'frame' ? '🔲' : <ImageIcon className="w-4 h-4" />}
                             </div>
                           )}
                         </div>
@@ -235,8 +238,8 @@ export const Products = ({ onNavigate }) => {
                       </div>
                     </td>
 
-                    <td className="py-3 text-center capitalize text-zinc-400 font-medium">
-                      {p.category}
+                    <td className="py-3 text-center capitalize text-zinc-300 font-semibold">
+                      {p.category === 'sticker' ? '✨ Sticker' : p.category === 'frame' ? '🔲 Frame' : '🖼️ Poster'}
                     </td>
 
                     <td className="py-3 text-center">

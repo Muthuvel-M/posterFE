@@ -12,6 +12,7 @@ import {
   IndianRupee,
   Calendar,
   Box,
+  Palette,
 } from 'lucide-react';
 import { InstagramIcon } from '../components/InstagramIcon';
 import { formatCurrency, formatDateTime } from '../utils/formatters';
@@ -29,6 +30,7 @@ export const HomeBento = ({
   const [products, setProducts] = useState([]);
   const [recentSales, setRecentSales] = useState([]);
   const [todaySummary, setTodaySummary] = useState({ revenue: 0, profit: 0, count: 0 });
+  const [customStats, setCustomStats] = useState({ total: 0, inProduction: 0, readyForPickup: 0 });
   const [loading, setLoading] = useState(true);
 
   // Dynamic time-based greeting
@@ -46,12 +48,14 @@ export const HomeBento = ({
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [prodsRes, analyticsRes] = await Promise.all([
+      const [prodsRes, analyticsRes, customRes] = await Promise.all([
         api.getProducts({ active: 'true' }).catch(() => ({ data: [] })),
         api.getAnalytics({ timeframe: 'today' }).catch(() => ({ data: {} })),
+        api.getCustomOrderStats().catch(() => ({ data: {} })),
       ]);
 
       if (prodsRes?.data) setProducts(prodsRes.data);
+      if (customRes?.data) setCustomStats(customRes.data);
       if (analyticsRes?.data) {
         setRecentSales(analyticsRes.data.recentSales || []);
         setTodaySummary({
@@ -191,10 +195,39 @@ export const HomeBento = ({
           </div>
         </div>
 
-        {/* Wide Card: INSTANT UPI QR */}
+        {/* Wide Card 1: CUSTOM ORDERS & FRAMING */}
+        <div
+          onClick={() => onNavigate('customization')}
+          className="p-4 sm:p-5 rounded-[28px] bg-gradient-to-r from-[#854d0e] via-[#a16207] to-[#ca8a04] hover:from-[#a16207] hover:to-[#eab308] text-white flex items-center justify-between gap-3 cursor-pointer shadow-lg hover:scale-[1.01] active:scale-[0.99] transition-all group animate-card-in stagger-7"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-black/30 text-amber-300 flex items-center justify-center font-bold shrink-0 shadow-md">
+              <Palette className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm sm:text-base font-black tracking-tight text-white">
+                  CUSTOM ORDERS
+                </h3>
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-white/20 text-white border border-white/30">
+                  {customStats.total || 0} ORDERS
+                </span>
+              </div>
+              <p className="text-xs text-white/80 mt-0.5 line-clamp-1">
+                Collect custom poster & frame specs, photos & advance deposits
+              </p>
+            </div>
+          </div>
+
+          <div className="w-9 h-9 rounded-full bg-black/20 group-hover:bg-black/30 flex items-center justify-center text-white shrink-0 transition-colors">
+            <ArrowRight className="w-4 h-4" />
+          </div>
+        </div>
+
+        {/* Wide Card 2: INSTANT UPI QR */}
         <div
           onClick={onOpenInstantQR}
-          className="p-4 sm:p-5 rounded-[28px] bg-zinc-900/95 hover:bg-zinc-900 border border-zinc-800/80 flex items-center justify-between gap-3 cursor-pointer shadow-lg hover:border-zinc-700 transition-all group animate-card-in stagger-7"
+          className="p-4 sm:p-5 rounded-[28px] bg-zinc-900/95 hover:bg-zinc-900 border border-zinc-800/80 flex items-center justify-between gap-3 cursor-pointer shadow-lg hover:border-zinc-700 transition-all group animate-card-in stagger-8"
         >
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-400 to-yellow-300 text-zinc-950 flex items-center justify-center font-bold shrink-0 shadow-md">
@@ -222,7 +255,7 @@ export const HomeBento = ({
       </div>
 
       {/* Section: RECENT SALES */}
-      <div className="space-y-2.5 animate-card-in stagger-8">
+      <div className="space-y-2.5 animate-card-in stagger-9">
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-black uppercase tracking-widest text-zinc-400">
             RECENT SALES

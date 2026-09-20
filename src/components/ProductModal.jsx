@@ -97,20 +97,51 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
 
   const handleCategorySelect = (cat) => {
     setCategory(cat);
-    if (cat.toLowerCase().includes('frame')) {
+    const lower = cat.toLowerCase();
+    if (lower.includes('sticker')) {
+      // Stickers default to ₹15 and ₹30
+      if (!isEditing) {
+        setSellPrice(15);
+        setCostPrice(5);
+        setSize('₹15');
+        setStock(50);
+      }
+      setVariations([
+        { size: '₹15', name: '₹15 Small Sticker', sellPrice: 15, costPrice: 5, stock: 50 },
+        { size: '₹30', name: '₹30 Premium Sticker', sellPrice: 30, costPrice: 10, stock: 50 },
+      ]);
+    } else if (lower.includes('frame')) {
       // Frames default to A4, A5
+      if (!isEditing) {
+        setSellPrice(180);
+        setCostPrice(80);
+        setSize('A4');
+        setStock(15);
+      }
       setVariations([
         { size: 'A4', name: 'A4 Frame', sellPrice: 180, costPrice: 80, stock: 15 },
         { size: 'A5', name: 'A5 Frame', sellPrice: 140, costPrice: 65, stock: 12 },
       ]);
     } else {
       // Posters default to A4, A5, A6
+      if (!isEditing) {
+        setSellPrice(40);
+        setCostPrice(15);
+        setSize('A4');
+        setStock(25);
+      }
       setVariations([
         { size: 'A4', name: 'A4 Poster', sellPrice: 40, costPrice: 15, stock: 25 },
         { size: 'A5', name: 'A5 Poster', sellPrice: 25, costPrice: 10, stock: 30 },
         { size: 'A6', name: 'A6 Poster', sellPrice: 20, costPrice: 8, stock: 40 },
       ]);
     }
+  };
+
+  const handleSelectStickerPreset = (presetPrice) => {
+    setSellPrice(presetPrice);
+    setSize(`₹${presetPrice}`);
+    setCostPrice(presetPrice === 15 ? 5 : 10);
   };
 
   const handleAddComboTier = () => {
@@ -147,11 +178,16 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
 
     try {
       setSubmitting(true);
-      const isFrame = category.toLowerCase().includes('frame');
+      const catLower = category.toLowerCase();
+      const normalizedCategory = catLower.includes('frame')
+        ? 'frame'
+        : catLower.includes('sticker')
+        ? 'sticker'
+        : 'poster';
 
       const payload = {
         name: name.trim(),
-        category: isFrame ? 'frame' : 'poster',
+        category: normalizedCategory,
         size: size || 'A4',
         image: image || '',
         costPrice: Number(costPrice) || 0,
@@ -163,7 +199,6 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
         comboOffers: comboTiers,
         active: true,
       };
-
 
       let res;
       if (isEditing) {
@@ -215,7 +250,6 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
           </button>
         </div>
 
-
         {/* Scrollable Form Body */}
         <div className="p-6 overflow-y-auto space-y-4 no-scrollbar flex-1">
           {/* Centered Photo Upload Card */}
@@ -254,44 +288,90 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
             <input
               type="text"
               required
-              placeholder="e.g. Cyberpunk Synthwave, Minimalist Frame"
+              placeholder={category.toLowerCase().includes('sticker') ? "e.g. Anime Holographic Sticker, Chibi Character" : "e.g. Cyberpunk Synthwave, Minimalist Frame"}
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full px-4 py-3 rounded-2xl bg-[#1c1c22] border border-zinc-800 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all"
             />
           </div>
 
-          {/* Category (Poster & Frame only) */}
+          {/* Category Selector: Poster, Frame & Sticker */}
           <div>
             <label className="block text-xs font-bold text-zinc-300 mb-1.5">
               Category *
             </label>
-            <div className="grid grid-cols-2 gap-2 mb-2">
+            <div className="grid grid-cols-3 gap-2 mb-2">
               <button
                 type="button"
                 onClick={() => handleCategorySelect('Poster')}
-                className={`py-3 px-4 rounded-2xl text-xs font-black border transition-all cursor-pointer ${
+                className={`py-3 px-2 rounded-2xl text-xs font-black border transition-all cursor-pointer ${
                   category.toLowerCase().includes('poster')
                     ? 'bg-amber-400 text-zinc-950 border-amber-400 shadow-md shadow-amber-400/20'
                     : 'bg-[#1c1c22] text-zinc-400 border-zinc-800 hover:text-white'
                 }`}
               >
-                Poster
+                🖼️ Poster
               </button>
 
               <button
                 type="button"
                 onClick={() => handleCategorySelect('Frame')}
-                className={`py-3 px-4 rounded-2xl text-xs font-black border transition-all cursor-pointer ${
+                className={`py-3 px-2 rounded-2xl text-xs font-black border transition-all cursor-pointer ${
                   category.toLowerCase().includes('frame')
                     ? 'bg-amber-400 text-zinc-950 border-amber-400 shadow-md shadow-amber-400/20'
                     : 'bg-[#1c1c22] text-zinc-400 border-zinc-800 hover:text-white'
                 }`}
               >
-                Frame
+                🔲 Frame
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleCategorySelect('Sticker')}
+                className={`py-3 px-2 rounded-2xl text-xs font-black border transition-all cursor-pointer ${
+                  category.toLowerCase().includes('sticker')
+                    ? 'bg-amber-400 text-zinc-950 border-amber-400 shadow-md shadow-amber-400/20'
+                    : 'bg-[#1c1c22] text-zinc-400 border-zinc-800 hover:text-white'
+                }`}
+              >
+                ✨ Sticker
               </button>
             </div>
           </div>
+
+          {/* Sticker Price Presets (₹15 & ₹30) */}
+          {category.toLowerCase().includes('sticker') && (
+            <div className="p-3.5 rounded-2xl bg-[#1c1c22] border border-zinc-800 space-y-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block">
+                STICKER PRICING TIER (₹15 / ₹30)
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleSelectStickerPreset(15)}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    Number(sellPrice) === 15
+                      ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
+                      : 'bg-zinc-900 border border-zinc-700 text-zinc-300 hover:text-white'
+                  }`}
+                >
+                  <span>✨ ₹15 Sticker</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelectStickerPreset(30)}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    Number(sellPrice) === 30
+                      ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
+                      : 'bg-zinc-900 border border-zinc-700 text-zinc-300 hover:text-white'
+                  }`}
+                >
+                  <span>🌟 ₹30 Sticker</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Sub-SKUs & Variations Card (Exact design from Image) */}
           {/* <div className="p-4 rounded-2xl bg-[#1c1c22] border border-zinc-800 space-y-3">

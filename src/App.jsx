@@ -19,6 +19,8 @@ import { Products } from './pages/Products';
 import { Customers } from './pages/Customers';
 import { SalesHistory } from './pages/SalesHistory';
 import { Settings } from './pages/Settings';
+import { Customization } from './pages/Customization';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { api } from './api/client';
 
 const MainLayout = () => {
@@ -83,66 +85,71 @@ const MainLayout = () => {
     <div className="min-h-screen bg-[#0c0c0e] text-slate-100 flex flex-col selection:bg-amber-400 selection:text-black">
       {/* Main Screen Router */}
       <main className="flex-1 w-full">
-        <div key={activeTab} className="animate-tab-slide">
-          {activeTab === 'home' && (
-            <HomeBento
-              user={user}
-              catalogVersion={catalogVersion}
-              onNavigate={(tab) => setActiveTab(tab)}
-              onOpenAddProduct={() => setIsAddProductOpen(true)}
-              onOpenRawMaterial={() => setIsRawMaterialOpen(true)}
-              onOpenInstantQR={() => setIsInstantQROpen(true)}
-              onOpenInstagramQR={() => setIsInstagramQROpen(true)}
-              onOpenReceipt={(sale) => showReceipt(sale)}
-            />
-          )}
-          {activeTab === 'checkout' && (
-            <Checkout
-              catalogVersion={catalogVersion}
-              customers={customers}
-              onCustomerCreated={handleCustomerCreated}
-              onOpenAddProduct={() => setIsAddProductOpen(true)}
-            />
-          )}
-          {activeTab === 'dashboard' && (
-            <Dashboard onOpenReceipt={(sale) => showReceipt(sale)} />
-          )}
-          {activeTab === 'inventory' && (
-            <Inventory
-              catalogVersion={catalogVersion}
-              onProductUpdated={handleProductSaved}
-              onNavigateToProducts={() => setActiveTab('products')}
-              onOpenAddProduct={() => setIsAddProductOpen(true)}
-            />
-          )}
-          {activeTab === 'products' && (
-            <Products
-              catalogVersion={catalogVersion}
-              onNavigate={(tab) => setActiveTab(tab)}
-            />
-          )}
-          {activeTab === 'customers' && (
-            <Customers
-              onOpenReceipt={(sale) => showReceipt(sale)}
-              onNavigate={(tab) => setActiveTab(tab)}
-            />
-          )}
-          {activeTab === 'sales' && (
-            <SalesHistory
-              settings={settings}
-              onOpenReceipt={(sale) => showReceipt(sale)}
-              onNavigate={(tab) => setActiveTab(tab)}
-            />
-          )}
-          {activeTab === 'settings' && (
-            <Settings
-              user={user}
-              settings={settings}
-              onSettingsUpdated={(newSet) => setSettings(newSet)}
-              onNavigate={(tab) => setActiveTab(tab)}
-            />
-          )}
-        </div>
+        <ErrorBoundary onNavigateHome={() => setActiveTab('home')}>
+          <div key={activeTab} className="animate-tab-slide">
+            {activeTab === 'home' && (
+              <HomeBento
+                user={user}
+                catalogVersion={catalogVersion}
+                onNavigate={(tab) => setActiveTab(tab)}
+                onOpenAddProduct={() => setIsAddProductOpen(true)}
+                onOpenRawMaterial={() => setIsRawMaterialOpen(true)}
+                onOpenInstantQR={() => setIsInstantQROpen(true)}
+                onOpenInstagramQR={() => setIsInstagramQROpen(true)}
+                onOpenReceipt={(sale) => showReceipt(sale)}
+              />
+            )}
+            {activeTab === 'checkout' && (
+              <Checkout
+                catalogVersion={catalogVersion}
+                customers={customers}
+                onCustomerCreated={handleCustomerCreated}
+                onOpenAddProduct={() => setIsAddProductOpen(true)}
+              />
+            )}
+            {activeTab === 'dashboard' && (
+              <Dashboard onOpenReceipt={(sale) => showReceipt(sale)} />
+            )}
+            {activeTab === 'inventory' && (
+              <Inventory
+                catalogVersion={catalogVersion}
+                onProductUpdated={handleProductSaved}
+                onNavigateToProducts={() => setActiveTab('products')}
+                onOpenAddProduct={() => setIsAddProductOpen(true)}
+              />
+            )}
+            {activeTab === 'products' && (
+              <Products
+                catalogVersion={catalogVersion}
+                onNavigate={(tab) => setActiveTab(tab)}
+              />
+            )}
+            {activeTab === 'customers' && (
+              <Customers
+                onOpenReceipt={(sale) => showReceipt(sale)}
+                onNavigate={(tab) => setActiveTab(tab)}
+              />
+            )}
+            {activeTab === 'sales' && (
+              <SalesHistory
+                settings={settings}
+                onOpenReceipt={(sale) => showReceipt(sale)}
+                onNavigate={(tab) => setActiveTab(tab)}
+              />
+            )}
+            {activeTab === 'settings' && (
+              <Settings
+                user={user}
+                settings={settings}
+                onSettingsUpdated={(newSet) => setSettings(newSet)}
+                onNavigate={(tab) => setActiveTab(tab)}
+              />
+            )}
+            {activeTab === 'customization' && (
+              <Customization onNavigate={(tab) => setActiveTab(tab)} />
+            )}
+          </div>
+        </ErrorBoundary>
       </main>
 
       {/* Global Modals */}

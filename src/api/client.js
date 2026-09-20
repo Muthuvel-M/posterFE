@@ -119,4 +119,22 @@ export const api = {
   getSettings: () => request('/settings'),
   updateSettings: (settingsData) =>
     request('/settings', { method: 'PUT', body: JSON.stringify(settingsData) }),
+
+  // Custom Orders / Customization
+  getCustomOrders: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return request(`/custom-orders${query ? `?${query}` : ''}`);
+  },
+  getCustomOrderById: (id) => request(`/custom-orders/${id}`),
+  getCustomOrderStats: () => request('/custom-orders/stats'),
+  createCustomOrder: (orderData) =>
+    request('/custom-orders', { method: 'POST', body: JSON.stringify(orderData) }),
+  updateCustomOrder: (id, orderData) =>
+    request(`/custom-orders/${id}`, { method: 'PUT', body: JSON.stringify(orderData) }),
+  updateCustomOrderStatus: (id, statusData) =>
+    request(`/custom-orders/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify(statusData),
+    }),
+  deleteCustomOrder: (id) => request(`/custom-orders/${id}`, { method: 'DELETE' }),
 };
