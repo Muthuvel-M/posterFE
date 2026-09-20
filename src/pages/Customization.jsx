@@ -229,13 +229,10 @@ export const Customization = ({ onNavigate }) => {
               <span>Custom Orders</span>
               <Palette className="w-5 h-5 text-amber-400" />
             </h1>
-            <p className="text-xs text-zinc-400">
-              Custom prints, framing details, photos & deposit pipeline
-            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* <div className="flex items-center gap-2">
           <button
             onClick={fetchOrdersAndStats}
             className="p-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer border border-zinc-800 shadow-sm"
@@ -251,7 +248,7 @@ export const Customization = ({ onNavigate }) => {
             <Plus className="w-4 h-4 stroke-[3]" />
             <span>New Custom Order</span>
           </button>
-        </div>
+        </div> */}
       </div>
 
       {/* KPI Metrics Banner */}
