@@ -1,0 +1,226 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply font-sans bg-[#0c0c0e] text-slate-100 min-h-screen antialiased selection:bg-amber-400 selection:text-black;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Pitch Dark Surfaces & Utilities */
+.dark-card {
+  @apply bg-[#151518] border border-zinc-800/80 rounded-3xl shadow-lg;
+}
+
+.dark-card-interactive {
+  @apply bg-[#151518] hover:bg-[#1a1a1f] border border-zinc-800/80 hover:border-zinc-700 rounded-3xl transition-all duration-200;
+}
+
+.dark-modal {
+  @apply bg-[#121215] border border-zinc-800 rounded-3xl shadow-2xl;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Universal Scrollbar Elimination (Hidden across all browsers)
+   ───────────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE & Edge */
+}
+
+::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0px !important;
+  height: 0px !important;
+  background: transparent !important;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0px !important;
+  height: 0px !important;
+}
+.no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+/* Print Styles */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-card {
+    border: none !important;
+    box-shadow: none !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Smooth Tab, Modal, Card & BottomNav Slide Animations
+   ───────────────────────────────────────────────────────────── */
+@keyframes tabSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes tabSlideLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes tabSlideRight {
+  0% {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes cardEaseIn {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes modalBackdropIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes modalBackdropOut {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes modalSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes modalSlideDown {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+}
+
+@keyframes bottomBarSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(120%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-tab-slide {
+  animation: tabSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-tab-slide-left {
+  animation: tabSlideLeft 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-tab-slide-right {
+  animation: tabSlideRight 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-card-in {
+  animation: cardEaseIn 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+.stagger-1 { animation-delay: 30ms; }
+.stagger-2 { animation-delay: 60ms; }
+.stagger-3 { animation-delay: 90ms; }
+.stagger-4 { animation-delay: 120ms; }
+.stagger-5 { animation-delay: 150ms; }
+.stagger-6 { animation-delay: 180ms; }
+.stagger-7 { animation-delay: 210ms; }
+.stagger-8 { animation-delay: 240ms; }
+.stagger-9 { animation-delay: 270ms; }
+.stagger-10 { animation-delay: 300ms; }
+.stagger-11 { animation-delay: 330ms; }
+.stagger-12 { animation-delay: 360ms; }
+
+.animate-modal-backdrop-in {
+  animation: modalBackdropIn 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.animate-modal-backdrop-out {
+  animation: modalBackdropOut 0.32s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-modal-slide-up {
+  animation: modalSlideUp 0.46s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.animate-modal-slide-down {
+  animation: modalSlideDown 0.34s cubic-bezier(0.32, 0, 0.67, 0) forwards;
+  will-change: transform, opacity;
+}
+
+.animate-bottombar-slide {
+  animation: bottomBarSlideIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
