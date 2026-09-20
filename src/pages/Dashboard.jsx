@@ -24,8 +24,15 @@ export const Dashboard = ({ onOpenReceipt }) => {
   const { showToast } = useToast();
 
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'behavior'
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(() => {
+    try {
+      const cached = localStorage.getItem('auraframe_cached_analytics');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [loading, setLoading] = useState(false);
   const [showProfit, setShowProfit] = useState(false);
 
   useEffect(() => {
@@ -34,13 +41,16 @@ export const Dashboard = ({ onOpenReceipt }) => {
 
   const fetchAnalytics = async () => {
     try {
-      setLoading(true);
+      if (!data) setLoading(true);
       const res = await api.getAnalytics({ timeframe: 'all' });
-      if (res.success) {
+      if (res.success && res.data) {
         setData(res.data);
+        localStorage.setItem('auraframe_cached_analytics', JSON.stringify(res.data));
       }
     } catch (error) {
-      showToast('Failed to load analytics', 'error');
+      if (!data) {
+        showToast('Failed to load analytics', 'error');
+      }
     } finally {
       setLoading(false);
     }

@@ -152,7 +152,7 @@ export const Inventory = () => {
 
       {/* Products List Rows */}
       <div key={activeFilter} className="space-y-2.5">
-        {loading ? (
+        {isSyncing && products.length === 0 ? (
           <div className="space-y-2">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="h-16 rounded-2xl bg-[#151518] animate-pulse" />

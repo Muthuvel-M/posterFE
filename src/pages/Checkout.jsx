@@ -122,11 +122,11 @@ export const Checkout = ({
                 </h1>
                 <button
                   type="button"
-                  onClick={fetchProducts}
+                  onClick={() => refreshCatalog(true)}
                   className="p-1 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 transition-colors cursor-pointer"
                   title="Refresh catalog from database"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
                 </button>
               </div>
 
@@ -213,7 +213,7 @@ export const Checkout = ({
           </div>
 
           {/* Product Cards Grid */}
-          {loading ? (
+          {isSyncing && products.length === 0 ? (
             <div className="grid grid-cols-2 gap-3 sm:gap-3.5 animate-pulse">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="h-56 rounded-2xl bg-[#151518] border border-zinc-800/40" />
