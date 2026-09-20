@@ -5,6 +5,8 @@ import {
   GripVertical,
   Trash2,
   Package,
+  Edit2,
+  PackagePlus,
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { RestockModal } from '../components/RestockModal';
@@ -188,7 +190,10 @@ export const Inventory = () => {
             return (
               <div
                 key={p._id}
-                onClick={() => setSelectedProductForRestock(p)}
+                onClick={() => {
+                  setEditingProduct(p);
+                  setIsAddModalOpen(true);
+                }}
                 style={{ animationDelay: `${70 + idx * 30}ms` }}
                 className="p-3 sm:p-3.5 rounded-2xl bg-[#151518] hover:bg-[#1a1a1f] border border-zinc-800/80 flex items-center justify-between gap-3 cursor-pointer group transition-all shadow-md animate-card-in"
               >
@@ -214,28 +219,65 @@ export const Inventory = () => {
                   </div>
                 </div>
 
-                {/* Right: Price, Stock Units & Delete */}
-                <div className="flex items-center gap-3 shrink-0">
+                {/* Right: Price, Stock Units, Quick Restock, Edit & Delete */}
+                <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                   <div className="text-right">
                     <div className="text-sm font-extrabold text-white">
                       ₹{p.sellPrice}
                     </div>
-                    <div
-                      className={`text-[11px] font-bold ${
-                        isLow ? 'text-amber-400' : 'text-emerald-400'
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedProductForRestock(p);
+                      }}
+                      className={`text-[11px] font-bold px-1.5 py-0.5 rounded-md transition-colors cursor-pointer hover:underline ${
+                        isLow ? 'text-amber-400 bg-amber-950/40' : 'text-emerald-400 bg-emerald-950/40'
                       }`}
+                      title="Click to adjust stock"
                     >
                       {p.stock} units
-                    </div>
+                    </button>
                   </div>
 
-                  <button
-                    onClick={(e) => handleDelete(p, e)}
-                    className="w-8 h-8 rounded-full bg-zinc-900 hover:bg-rose-950/60 text-zinc-500 hover:text-rose-400 flex items-center justify-center transition-colors cursor-pointer"
-                    title="Delete product"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    {/* Restock Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedProductForRestock(p);
+                      }}
+                      className="w-8 h-8 rounded-xl bg-zinc-900 hover:bg-emerald-950/60 text-zinc-400 hover:text-emerald-400 flex items-center justify-center transition-all cursor-pointer border border-zinc-800/80 hover:border-emerald-700/50"
+                      title="Restock units"
+                    >
+                      <PackagePlus className="w-4 h-4" />
+                    </button>
+
+                    {/* Edit Product Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingProduct(p);
+                        setIsAddModalOpen(true);
+                      }}
+                      className="w-8 h-8 rounded-xl bg-zinc-900 hover:bg-amber-950/60 text-zinc-400 hover:text-amber-400 flex items-center justify-center transition-all cursor-pointer border border-zinc-800/80 hover:border-amber-500/50"
+                      title="Edit product details"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+
+                    {/* Delete Product Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => handleDelete(p, e)}
+                      className="w-8 h-8 rounded-xl bg-zinc-900 hover:bg-rose-950/60 text-zinc-400 hover:text-rose-400 flex items-center justify-center transition-all cursor-pointer border border-zinc-800/80 hover:border-rose-700/50"
+                      title="Delete product"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             );
