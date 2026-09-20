@@ -16,29 +16,43 @@ export const Login = () => {
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
   useEffect(() => {
-    // Initialize Google Identity Services (GIS) if SDK is available
-    if (window.google?.accounts?.id && googleClientId) {
-      try {
-        window.google.accounts.id.initialize({
-          client_id: googleClientId,
-          callback: handleGoogleCredentialResponse,
-          auto_select: false,
-          cancel_on_tap_outside: true,
-        });
-
-        if (googleBtnRef.current) {
-          window.google.accounts.id.renderButton(googleBtnRef.current, {
-            theme: 'filled_black',
-            size: 'large',
-            shape: 'pill',
-            width: 340,
-            text: 'continue_with',
+    let initialized = false;
+    const initGoogle = () => {
+      if (initialized) return;
+      if (window.google?.accounts?.id && googleClientId) {
+        try {
+          window.google.accounts.id.initialize({
+            client_id: googleClientId,
+            callback: handleGoogleCredentialResponse,
+            auto_select: false,
+            cancel_on_tap_outside: true,
           });
+
+          if (googleBtnRef.current) {
+            window.google.accounts.id.renderButton(googleBtnRef.current, {
+              theme: 'filled_black',
+              size: 'large',
+              shape: 'pill',
+              width: 340,
+              text: 'continue_with',
+            });
+          }
+          initialized = true;
+        } catch (err) {
+          console.warn('Google Identity Services initialization notice:', err);
         }
-      } catch (err) {
-        console.warn('Google Identity Services initialization notice:', err);
       }
-    }
+    };
+
+    initGoogle();
+    const interval = setInterval(() => {
+      if (window.google?.accounts?.id) {
+        initGoogle();
+        clearInterval(interval);
+      }
+    }, 250);
+
+    return () => clearInterval(interval);
   }, [googleClientId]);
 
   const handleGoogleCredentialResponse = async (response) => {
