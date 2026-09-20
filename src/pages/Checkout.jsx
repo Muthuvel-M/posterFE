@@ -19,6 +19,101 @@ import { useToast } from '../context/ToastContext';
 import { formatCurrency } from '../utils/formatters';
 import { api } from '../api/client';
 
+const SIZE_CATALOG = {
+  poster: [
+    {
+      size: 'A4',
+      name: 'A4 Poster',
+      dimensions: '210 × 297 mm',
+      tagline: 'Standard Wall Print',
+      defaultPrice: 40,
+      defaultCost: 15,
+      defaultStock: 100,
+      image: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=600&auto=format&fit=crop&q=80',
+      emoji: '🖼️',
+    },
+    {
+      size: 'A5',
+      name: 'A5 Poster',
+      dimensions: '148 × 210 mm',
+      tagline: 'Medium Art Print',
+      defaultPrice: 25,
+      defaultCost: 10,
+      defaultStock: 100,
+      image: 'https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=600&auto=format&fit=crop&q=80',
+      emoji: '🖼️',
+    },
+    {
+      size: 'A6',
+      name: 'A6 Poster',
+      dimensions: '105 × 148 mm',
+      tagline: 'Mini Postcard Print',
+      defaultPrice: 20,
+      defaultCost: 8,
+      defaultStock: 100,
+      image: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&auto=format&fit=crop&q=80',
+      emoji: '🖼️',
+    },
+  ],
+  frame: [
+    {
+      size: 'A4',
+      name: 'A4 Frame',
+      dimensions: 'Fits A4 (210 × 297 mm)',
+      tagline: 'Solid Black / Wood Frame',
+      defaultPrice: 180,
+      defaultCost: 80,
+      defaultStock: 50,
+      image: 'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=600&auto=format&fit=crop&q=80',
+      emoji: '🔲',
+    },
+    {
+      size: 'A5',
+      name: 'A5 Frame',
+      dimensions: 'Fits A5 (148 × 210 mm)',
+      tagline: 'Natural Scandinavian Frame',
+      defaultPrice: 140,
+      defaultCost: 65,
+      defaultStock: 50,
+      image: 'https://images.unsplash.com/photo-1534349762230-e0cadf78f5da?w=600&auto=format&fit=crop&q=80',
+      emoji: '🔲',
+    },
+    {
+      size: 'A6',
+      name: 'A6 Frame',
+      dimensions: 'Fits A6 (105 × 148 mm)',
+      tagline: 'Compact Tabletop Frame',
+      defaultPrice: 100,
+      defaultCost: 45,
+      defaultStock: 50,
+      image: 'https://images.unsplash.com/photo-1534349762230-e0cadf78f5da?w=600&auto=format&fit=crop&q=80',
+      emoji: '🔲',
+    },
+  ],
+  sticker: [
+    {
+      size: '₹15',
+      name: '₹15 Sticker',
+      dimensions: 'Small Holographic',
+      tagline: 'Waterproof Sparkle',
+      defaultPrice: 15,
+      defaultCost: 5,
+      defaultStock: 150,
+      emoji: '✨',
+    },
+    {
+      size: '₹30',
+      name: '₹30 Sticker',
+      dimensions: 'Premium Die-Cut',
+      tagline: 'Large Vinyl Cutout',
+      defaultPrice: 30,
+      defaultCost: 10,
+      defaultStock: 150,
+      emoji: '🌟',
+    },
+  ],
+};
+
 export const Checkout = ({
   catalogVersion,
   customers = [],
@@ -43,12 +138,11 @@ export const Checkout = ({
 
   const { showToast } = useToast();
 
-  const [step, setStep] = useState(1); // 1 = Product Selection ('New Sale'), 2 = Checkout Review ('Checkout')
+  // Wizard Steps
+  const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('poster'); // 'poster' | 'frame' | 'sticker'
-  const [sizeFilter, setSizeFilter] = useState('all'); // 'all' | 'A4' | 'A5' | 'A6'
 
   // Step 2 Form States
   const [custName, setCustName] = useState(customer?.name || '');
@@ -81,79 +175,177 @@ export const Checkout = ({
     }
   };
 
-  // Helper to ensure or get a valid sticker product (₹15 or ₹30)
-  const handleQuickAddSticker = async (priceTier) => {
-    const existing = products.find(
-      (p) =>
-        p.category?.toLowerCase() === 'sticker' &&
-        (Number(p.sellPrice) === priceTier || p.size === `₹${priceTier}` || p.name.includes(String(priceTier)))
-    );
+  // Resolves or auto-creates a real database product for a given category & size
+  const resolveProductForSize = async (category, size, defaultDef) => {
+    let matched = products.find((p) => {
+      const isCat = p.category?.toLowerCase() === category.toLowerCase();
+      if (!isCat) return false;
+      if (category === 'sticker') {
+        return (
+          p.size === size ||
+          Number(p.sellPrice) === Number(defaultDef.defaultPrice) ||
+          p.name?.includes(String(defaultDef.defaultPrice))
+        );
+      }
+      return p.size?.toUpperCase() === size.toUpperCase();
+    });
 
-    if (existing) {
-      addToCart(existing);
-      return;
-    }
+    if (matched) return matched;
 
-    // Auto-create on demand in database if not found so it gets a valid DB ID
+    // Auto-create in DB so transactions link to a permanent MongoDB _id
     try {
-      const is15 = priceTier === 15;
-      const newStickerPayload = {
-        name: is15 ? '₹15 Small Sticker' : '₹30 Premium Sticker',
-        category: 'sticker',
-        size: `₹${priceTier}`,
-        sellPrice: priceTier,
-        costPrice: is15 ? 5 : 10,
-        stock: 100,
-        lowStockThreshold: 15,
-        emoji: is15 ? '✨' : '🌟',
+      const payload = {
+        name: defaultDef.name,
+        sku: `AF-${category.substring(0, 3).toUpperCase()}-${size.replace(/[^A-Za-z0-9]/g, '')}-${Date.now().toString().slice(-4)}`,
+        category,
+        size,
+        sellPrice: defaultDef.defaultPrice,
+        costPrice: defaultDef.defaultCost,
+        stock: defaultDef.defaultStock || 100,
+        lowStockThreshold: 10,
+        image: defaultDef.image || '',
+        emoji: defaultDef.emoji || (category === 'frame' ? '🔲' : category === 'sticker' ? '✨' : '🖼️'),
         active: true,
       };
-
-      const res = await api.createProduct(newStickerPayload);
+      const res = await api.createProduct(payload);
       if (res.success && res.data) {
         setProducts((prev) => [res.data, ...prev]);
-        addToCart(res.data);
+        return res.data;
       }
     } catch (err) {
-      // Fallback local addition if network fails
-      const fallbackProd = {
-        _id: `temp-stk-${priceTier}`,
-        name: `₹${priceTier} Sticker`,
-        category: 'sticker',
-        size: `₹${priceTier}`,
-        sellPrice: priceTier,
-        costPrice: priceTier === 15 ? 5 : 10,
-        stock: 100,
-        emoji: priceTier === 15 ? '✨' : '🌟',
-      };
-      addToCart(fallbackProd);
+      console.error('Error auto-creating size product:', err);
+    }
+
+    // Fallback temporary product
+    return {
+      _id: `temp-${category}-${size}`,
+      name: defaultDef.name,
+      category,
+      size,
+      sellPrice: defaultDef.defaultPrice,
+      costPrice: defaultDef.defaultCost,
+      stock: defaultDef.defaultStock || 100,
+      emoji: defaultDef.emoji,
+    };
+  };
+
+  // Get live quantity in cart for a size
+  const getCartQtyForSize = (category, size, defaultDef) => {
+    const item = cartItems.find((ci) => {
+      const p = ci.product;
+      const isCat = p.category?.toLowerCase() === category.toLowerCase();
+      if (!isCat) return false;
+      if (category === 'sticker') {
+        return (
+          p.size === size ||
+          Number(ci.sellPrice) === Number(defaultDef.defaultPrice) ||
+          p.name?.includes(String(defaultDef.defaultPrice))
+        );
+      }
+      return p.size?.toUpperCase() === size.toUpperCase();
+    });
+    return item ? item.qty : 0;
+  };
+
+  // Handle adding or incrementing size
+  const handleAddOrIncrementSize = async (category, size, defaultDef) => {
+    const prod = await resolveProductForSize(category, size, defaultDef);
+    if (!prod) return;
+
+    const existingInCart = cartItems.find(
+      (ci) =>
+        ci.product._id === prod._id ||
+        (ci.product.category?.toLowerCase() === category.toLowerCase() &&
+          (category === 'sticker'
+            ? ci.product.size === size || Number(ci.sellPrice) === Number(defaultDef.defaultPrice)
+            : ci.product.size?.toUpperCase() === size.toUpperCase()))
+    );
+
+    if (existingInCart) {
+      updateQty(existingInCart.product._id, existingInCart.qty + 1);
+    } else {
+      addToCart(prod);
     }
   };
 
-  const getCartItemQty = (productId) => {
-    const found = cartItems.find((item) => item.product._id === productId);
-    return found ? found.qty : 0;
+  // Handle decrementing size
+  const handleDecrementSize = (category, size, defaultDef) => {
+    const existingInCart = cartItems.find(
+      (ci) =>
+        ci.product.category?.toLowerCase() === category.toLowerCase() &&
+        (category === 'sticker'
+          ? ci.product.size === size || Number(ci.sellPrice) === Number(defaultDef.defaultPrice)
+          : ci.product.size?.toUpperCase() === size.toUpperCase())
+    );
+
+    if (existingInCart) {
+      updateQty(existingInCart.product._id, existingInCart.qty - 1);
+    }
   };
 
-  // Find ₹15 and ₹30 products for quick badge state
-  const sticker15Product = products.find(
-    (p) =>
-      p.category?.toLowerCase() === 'sticker' &&
-      (Number(p.sellPrice) === 15 || p.size === '₹15' || p.name.includes('15'))
-  );
-  const sticker30Product = products.find(
-    (p) =>
-      p.category?.toLowerCase() === 'sticker' &&
-      (Number(p.sellPrice) === 30 || p.size === '₹30' || p.name.includes('30'))
-  );
+  // Get live price and stock from DB
+  const getLiveSizeInfo = (category, size, defaultDef) => {
+    const matching = products.filter((p) => {
+      const isCat = p.category?.toLowerCase() === category.toLowerCase();
+      if (!isCat) return false;
+      if (category === 'sticker') {
+        return (
+          p.size === size ||
+          Number(p.sellPrice) === Number(defaultDef.defaultPrice) ||
+          p.name?.includes(String(defaultDef.defaultPrice))
+        );
+      }
+      return p.size?.toUpperCase() === size.toUpperCase();
+    });
 
-  const sticker15Qty = sticker15Product
-    ? getCartItemQty(sticker15Product._id)
-    : cartItems.find((i) => i.product.category === 'sticker' && i.sellPrice === 15)?.qty || 0;
+    if (matching.length > 0) {
+      const totalStock = matching.reduce((sum, p) => sum + (p.stock || 0), 0);
+      const sellPrice = matching[0].sellPrice;
+      const image = matching.find((p) => p.image)?.image || defaultDef.image;
+      return {
+        sellPrice,
+        stock: totalStock,
+        image,
+        isOutOfStock: totalStock <= 0,
+        lowStock: totalStock <= 10,
+      };
+    }
 
-  const sticker30Qty = sticker30Product
-    ? getCartItemQty(sticker30Product._id)
-    : cartItems.find((i) => i.product.category === 'sticker' && i.sellPrice === 30)?.qty || 0;
+    return {
+      sellPrice: defaultDef.defaultPrice,
+      stock: defaultDef.defaultStock,
+      image: defaultDef.image,
+      isOutOfStock: false,
+      lowStock: false,
+    };
+  };
+
+  // Gather current category size products (plus any custom size products in DB)
+  const getCurrentCategorySizes = () => {
+    const baseList = SIZE_CATALOG[categoryFilter] || [];
+    const sizes = [...baseList];
+
+    // Check for any custom sizes added in database
+    products
+      .filter((p) => p.category?.toLowerCase() === categoryFilter.toLowerCase())
+      .forEach((p) => {
+        if (p.size && !sizes.some((s) => s.size?.toUpperCase() === p.size?.toUpperCase())) {
+          sizes.push({
+            size: p.size,
+            name: `${p.size} ${categoryFilter === 'frame' ? 'Frame' : categoryFilter === 'sticker' ? 'Sticker' : 'Poster'}`,
+            dimensions: `Custom Size (${p.size})`,
+            tagline: p.name,
+            defaultPrice: p.sellPrice,
+            defaultCost: p.costPrice,
+            defaultStock: p.stock,
+            image: p.image,
+            emoji: p.emoji || (categoryFilter === 'frame' ? '🔲' : categoryFilter === 'sticker' ? '✨' : '🖼️'),
+          });
+        }
+      });
+
+    return sizes;
+  };
 
   const handleDiscountChange = (val, mode = discountMode) => {
     setDiscountValue(val);
@@ -174,7 +366,7 @@ export const Checkout = ({
 
   const handleProceedToReview = () => {
     if (cartItems.length === 0) {
-      showToast('Please select at least one poster or frame', 'error');
+      showToast('Please select at least one poster, frame or sticker', 'error');
       return;
     }
     setStep(2);
@@ -190,33 +382,15 @@ export const Checkout = ({
     openPayModal();
   };
 
-  const filteredProducts = products.filter((p) => {
-    const query = searchTerm.toLowerCase();
-    const matchesSearch =
-      !searchTerm ||
-      p.name.toLowerCase().includes(query) ||
-      p.sku.toLowerCase().includes(query) ||
-      (p.category && p.category.toLowerCase().includes(query)) ||
-      (p.size && p.size.toLowerCase().includes(query));
-
-    const matchesCat =
-      categoryFilter === 'all' ||
-      (p.category && p.category.toLowerCase() === categoryFilter.toLowerCase());
-
-    const matchesSize =
-      sizeFilter === 'all' ||
-      (p.size && p.size.toUpperCase() === sizeFilter.toUpperCase());
-
-    return matchesSearch && matchesCat && matchesSize;
-  });
+  const categorySizes = getCurrentCategorySizes();
 
   return (
     <div className="max-w-xl mx-auto px-4 sm:px-6 py-5 pb-32 text-white">
       {/* ─────────────────────────────────────────────────────────────
-          STEP 1: PRODUCT SELECTION (New Sale POS Screen)
+          STEP 1: PRODUCT SELECTION (Size-Based POS Screen)
          ───────────────────────────────────────────────────────────── */}
       {step === 1 && (
-        <div key="step1" className="space-y-5">
+        <div key="step1" className="space-y-4">
           {/* Top Header & Progress Bar */}
           <div className="animate-card-in stagger-1">
             <div className="flex items-center justify-between mb-3">
@@ -265,23 +439,11 @@ export const Checkout = ({
             </div>
           </div>
 
-          {/* Search Input */}
-          <div className="relative animate-card-in stagger-2">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-            <input
-              type="text"
-              placeholder="Search posters, frames, sizes..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 rounded-2xl bg-[#151518] border border-zinc-800/80 text-xs sm:text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all"
-            />
-          </div>
-
-          {/* Category Filter Pills (Poster, Frame & Sticker) */}
-          <div className="flex items-center gap-2 animate-card-in stagger-3">
+          {/* Category Tabs (Posters, Frames, Stickers) */}
+          <div className="flex items-center gap-2 animate-card-in stagger-2">
             <button
               type="button"
-              onClick={() => { setCategoryFilter('poster'); setSizeFilter('all'); }}
+              onClick={() => setCategoryFilter('poster')}
               className={`flex-1 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
                 categoryFilter === 'poster'
                   ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
@@ -293,7 +455,7 @@ export const Checkout = ({
 
             <button
               type="button"
-              onClick={() => { setCategoryFilter('frame'); setSizeFilter('all'); }}
+              onClick={() => setCategoryFilter('frame')}
               className={`flex-1 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
                 categoryFilter === 'frame'
                   ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
@@ -305,7 +467,7 @@ export const Checkout = ({
 
             <button
               type="button"
-              onClick={() => { setCategoryFilter('sticker'); setSizeFilter('all'); }}
+              onClick={() => setCategoryFilter('sticker')}
               className={`flex-1 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
                 categoryFilter === 'sticker'
                   ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
@@ -316,73 +478,67 @@ export const Checkout = ({
             </button>
           </div>
 
-          {/* Size Sub-filter (for Posters and Frames) */}
-          {categoryFilter !== 'sticker' && (
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar animate-card-in">
-              {['all', 'A4', 'A5', 'A6'].map((size) => (
-                <button
-                  key={size}
-                  type="button"
-                  onClick={() => setSizeFilter(size)}
-                  className={`px-3 py-1 rounded-xl text-[10.5px] font-bold uppercase transition-all cursor-pointer ${
-                    sizeFilter === size
-                      ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40 shadow-sm'
-                      : 'bg-zinc-900/80 text-zinc-400 border border-zinc-800/80 hover:text-zinc-200'
-                  }`}
-                >
-                  {size === 'all' ? 'All Sizes' : size}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* Size-as-Product Grid (Posters, Frames & Stickers) */}
+          <div key={categoryFilter} className="grid grid-cols-2 gap-3 sm:gap-3.5 animate-card-in stagger-3">
+            {categorySizes.map((item, idx) => {
+              const inCartQty = getCartQtyForSize(categoryFilter, item.size, item);
+              const info = getLiveSizeInfo(categoryFilter, item.size, item);
 
-          {/* Products View */}
-          {categoryFilter === 'sticker' ? (
-            <div key="stickers-view" className="space-y-4 animate-card-in stagger-4">
-              {/* Dedicated 2-Card Tier Display for ₹15 and ₹30 Stickers */}
-              <div className="grid grid-cols-2 gap-3 sm:gap-3.5">
-                {/* 1. ₹15 Sticker Card */}
+              return (
                 <div
-                  onClick={() => handleQuickAddSticker(15)}
+                  key={item.size}
+                  onClick={() => {
+                    if (!info.isOutOfStock && inCartQty === 0) {
+                      handleAddOrIncrementSize(categoryFilter, item.size, item);
+                    }
+                  }}
+                  style={{ animationDelay: `${50 + idx * 35}ms` }}
                   className={`rounded-2xl sm:rounded-[22px] overflow-hidden transition-all duration-300 flex flex-col justify-between cursor-pointer select-none group active:scale-[0.98] shadow-md ${
-                    sticker15Qty > 0
+                    info.isOutOfStock
+                      ? 'opacity-60 grayscale-[40%] cursor-not-allowed bg-[#141417] border border-zinc-800/40'
+                      : inCartQty > 0
                       ? 'bg-gradient-to-b from-[#242116] via-[#1a1812] to-[#141417] border-2 border-amber-400 ring-2 ring-amber-400/20 shadow-amber-500/10'
                       : 'bg-[#16161a] hover:bg-[#1c1c22] border border-zinc-800/80 hover:border-zinc-700'
                   }`}
                 >
-                  {/* Image / Icon Header */}
+                  {/* Card Visual / Image Preview Container */}
                   <div className="relative w-full aspect-square bg-[#0e0e11] overflow-hidden flex items-center justify-center">
-                    {sticker15Product?.image ? (
+                    {info.image ? (
                       <img
-                        src={sticker15Product.image}
-                        alt="₹15 Sticker"
+                        src={info.image}
+                        alt={item.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     ) : (
                       <div className="text-center p-3">
-                        <span className="text-5xl block mb-1 drop-shadow-md">✨</span>
-                        <span className="text-[10px] font-black uppercase text-amber-300 tracking-wider">Small Sticker</span>
+                        <span className="text-5xl block mb-1 drop-shadow-md">
+                          {item.emoji || (categoryFilter === 'frame' ? '🔲' : categoryFilter === 'sticker' ? '✨' : '🖼️')}
+                        </span>
+                        <span className="text-[10px] font-black uppercase text-amber-300 tracking-wider">
+                          {item.size}
+                        </span>
                       </div>
                     )}
 
-                    {/* Top-Left Pill */}
+                    {/* Top-Left Size Badge */}
                     <div className="absolute top-2.5 left-2.5 z-10">
                       <span className="px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/10 text-[9.5px] font-black uppercase tracking-wider text-amber-300 shadow-sm">
-                        ₹15 Tier
+                        {item.size}
                       </span>
                     </div>
 
-                    {/* Top-Right Action: Unselected (+) vs Selected ([-] Qty [+]) */}
+                    {/* Top-Right Action: (+) Add Button vs Interactive ([-] Qty [+]) Stepper */}
                     <div className="absolute top-2.5 right-2.5 z-10">
-                      {sticker15Qty === 0 ? (
+                      {inCartQty === 0 ? (
                         <button
                           type="button"
+                          disabled={info.isOutOfStock}
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleQuickAddSticker(15);
+                            handleAddOrIncrementSize(categoryFilter, item.size, item);
                           }}
-                          className="w-8 h-8 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 flex items-center justify-center font-black shadow-lg shadow-amber-400/30 group-hover:scale-110 active:scale-90 transition-all cursor-pointer"
-                          title="Add ₹15 Sticker"
+                          className="w-8 h-8 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 flex items-center justify-center font-black shadow-lg shadow-amber-400/30 group-hover:scale-110 active:scale-90 transition-all disabled:opacity-30 cursor-pointer"
+                          title={`Add ${item.name}`}
                         >
                           <Plus className="w-4 h-4 stroke-[3]" />
                         </button>
@@ -395,24 +551,19 @@ export const Checkout = ({
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              const target =
-                                sticker15Product ||
-                                cartItems.find(
-                                  (i) => i.product.category === 'sticker' && i.sellPrice === 15
-                                )?.product;
-                              if (target) updateQty(target._id, sticker15Qty - 1);
+                              handleDecrementSize(categoryFilter, item.size, item);
                             }}
                             className="w-5 h-5 rounded-lg hover:bg-black/15 flex items-center justify-center transition-colors cursor-pointer"
                             title="Decrease"
                           >
                             <Minus className="w-3.5 h-3.5 stroke-[3]" />
                           </button>
-                          <span className="min-w-[16px] text-center font-black text-xs">{sticker15Qty}</span>
+                          <span className="min-w-[16px] text-center font-black text-xs">{inCartQty}</span>
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleQuickAddSticker(15);
+                              handleAddOrIncrementSize(categoryFilter, item.size, item);
                             }}
                             className="w-5 h-5 rounded-lg hover:bg-black/15 flex items-center justify-center transition-colors cursor-pointer"
                             title="Add one more"
@@ -426,423 +577,52 @@ export const Checkout = ({
 
                   {/* Info Footer */}
                   <div className="p-3 sm:p-3.5 space-y-1 bg-[#121215]/90 border-t border-zinc-800/60">
-                    <h3 className="text-xs sm:text-[13px] font-extrabold text-white group-hover:text-amber-300 transition-colors truncate">
-                      {sticker15Product?.name || '₹15 Small Holographic'}
+                    <h3 className="text-xs sm:text-[13px] font-extrabold text-white truncate group-hover:text-amber-300 transition-colors">
+                      {item.name}
                     </h3>
-                    <div className="flex items-baseline justify-between pt-0.5">
-                      <span className="text-sm sm:text-base font-black text-amber-400 tracking-tight">₹15</span>
-                      <span className="text-[10px] font-semibold text-zinc-400">per piece</span>
-                    </div>
-                    <p className="text-[9.5px] font-bold text-emerald-400 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                      {sticker15Product ? `${sticker15Product.stock} in stock` : 'In stock'}
+                    <p className="text-[10px] text-zinc-400 font-medium truncate">
+                      {item.dimensions}
                     </p>
-                  </div>
 
-                  {/* Active highlight line */}
-                  {sticker15Qty > 0 && <div className="h-1 bg-gradient-to-r from-amber-400 to-yellow-300 w-full" />}
-                </div>
-
-                {/* 2. ₹30 Sticker Card */}
-                <div
-                  onClick={() => handleQuickAddSticker(30)}
-                  className={`rounded-2xl sm:rounded-[22px] overflow-hidden transition-all duration-300 flex flex-col justify-between cursor-pointer select-none group active:scale-[0.98] shadow-md ${
-                    sticker30Qty > 0
-                      ? 'bg-gradient-to-b from-[#242116] via-[#1a1812] to-[#141417] border-2 border-amber-400 ring-2 ring-amber-400/20 shadow-amber-500/10'
-                      : 'bg-[#16161a] hover:bg-[#1c1c22] border border-zinc-800/80 hover:border-zinc-700'
-                  }`}
-                >
-                  {/* Image / Icon Header */}
-                  <div className="relative w-full aspect-square bg-[#0e0e11] overflow-hidden flex items-center justify-center">
-                    {sticker30Product?.image ? (
-                      <img
-                        src={sticker30Product.image}
-                        alt="₹30 Sticker"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="text-center p-3">
-                        <span className="text-5xl block mb-1 drop-shadow-md">🌟</span>
-                        <span className="text-[10px] font-black uppercase text-yellow-300 tracking-wider">Premium Die-Cut</span>
-                      </div>
-                    )}
-
-                    {/* Top-Left Pill */}
-                    <div className="absolute top-2.5 left-2.5 z-10">
-                      <span className="px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/10 text-[9.5px] font-black uppercase tracking-wider text-amber-300 shadow-sm">
-                        ₹30 Tier
+                    <div className="flex items-baseline justify-between pt-0.5">
+                      <span className="text-sm sm:text-base font-black text-amber-400 tracking-tight">
+                        {formatCurrency(info.sellPrice)}
                       </span>
+                      <span className="text-[10px] text-zinc-400 font-semibold">per piece</span>
                     </div>
 
-                    {/* Top-Right Action */}
-                    <div className="absolute top-2.5 right-2.5 z-10">
-                      {sticker30Qty === 0 ? (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleQuickAddSticker(30);
-                          }}
-                          className="w-8 h-8 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 flex items-center justify-center font-black shadow-lg shadow-amber-400/30 group-hover:scale-110 active:scale-90 transition-all cursor-pointer"
-                          title="Add ₹30 Sticker"
-                        >
-                          <Plus className="w-4 h-4 stroke-[3]" />
-                        </button>
-                      ) : (
-                        <div
-                          onClick={(e) => e.stopPropagation()}
-                          className="flex items-center gap-1.5 bg-gradient-to-r from-amber-400 to-yellow-400 text-zinc-950 px-2 py-1 rounded-xl font-black text-xs shadow-lg shadow-amber-400/30 ring-2 ring-zinc-950 animate-scale-up"
-                        >
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const target =
-                                sticker30Product ||
-                                cartItems.find(
-                                  (i) => i.product.category === 'sticker' && i.sellPrice === 30
-                                )?.product;
-                              if (target) updateQty(target._id, sticker30Qty - 1);
-                            }}
-                            className="w-5 h-5 rounded-lg hover:bg-black/15 flex items-center justify-center transition-colors cursor-pointer"
-                            title="Decrease"
-                          >
-                            <Minus className="w-3.5 h-3.5 stroke-[3]" />
-                          </button>
-                          <span className="min-w-[16px] text-center font-black text-xs">{sticker30Qty}</span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleQuickAddSticker(30);
-                            }}
-                            className="w-5 h-5 rounded-lg hover:bg-black/15 flex items-center justify-center transition-colors cursor-pointer"
-                            title="Add one more"
-                          >
-                            <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Info Footer */}
-                  <div className="p-3 sm:p-3.5 space-y-1 bg-[#121215]/90 border-t border-zinc-800/60">
-                    <h3 className="text-xs sm:text-[13px] font-extrabold text-white group-hover:text-amber-300 transition-colors truncate">
-                      {sticker30Product?.name || '₹30 Premium Die-Cut'}
-                    </h3>
-                    <div className="flex items-baseline justify-between pt-0.5">
-                      <span className="text-sm sm:text-base font-black text-amber-400 tracking-tight">₹30</span>
-                      <span className="text-[10px] font-semibold text-zinc-400">per piece</span>
-                    </div>
-                    <p className="text-[9.5px] font-bold text-emerald-400 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                      {sticker30Product ? `${sticker30Product.stock} in stock` : 'In stock'}
-                    </p>
-                  </div>
-
-                  {/* Active highlight line */}
-                  {sticker30Qty > 0 && <div className="h-1 bg-gradient-to-r from-amber-400 to-yellow-300 w-full" />}
-                </div>
-              </div>
-
-              {/* Additional Custom Stickers from DB (if any) */}
-              {filteredProducts.filter(
-                (p) =>
-                  p._id !== sticker15Product?._id &&
-                  p._id !== sticker30Product?._id
-              ).length > 0 && (
-                <div className="pt-2">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400 block mb-2.5">
-                    CUSTOM DESIGNS & MORE STICKERS
-                  </span>
-                  <div className="grid grid-cols-2 gap-3 sm:gap-3.5">
-                    {filteredProducts
-                      .filter(
-                        (p) =>
-                          p._id !== sticker15Product?._id &&
-                          p._id !== sticker30Product?._id
-                      )
-                      .map((p, idx) => {
-                        const inCartQty = getCartItemQty(p._id);
-                        const isOutOfStock = p.stock <= 0;
-
-                        return (
-                          <div
-                            key={p._id}
-                            onClick={() => {
-                              if (!isOutOfStock && inCartQty === 0) {
-                                addToCart(p);
-                              }
-                            }}
-                            style={{ animationDelay: `${70 + idx * 30}ms` }}
-                            className={`rounded-2xl sm:rounded-[22px] overflow-hidden transition-all duration-300 flex flex-col justify-between cursor-pointer select-none group active:scale-[0.98] shadow-md ${
-                              isOutOfStock
-                                ? 'opacity-60 grayscale-[40%] cursor-not-allowed bg-[#141417] border border-zinc-800/40'
-                                : inCartQty > 0
-                                ? 'bg-gradient-to-b from-[#242116] via-[#1a1812] to-[#141417] border-2 border-amber-400 ring-2 ring-amber-400/20 shadow-amber-500/10'
-                                : 'bg-[#16161a] hover:bg-[#1c1c22] border border-zinc-800/80 hover:border-zinc-700'
-                            }`}
-                          >
-                            <div className="relative w-full aspect-square bg-[#0e0e11] overflow-hidden flex items-center justify-center">
-                              {p.image ? (
-                                <img
-                                  src={p.image}
-                                  alt={p.name}
-                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                />
-                              ) : (
-                                <div className="text-4xl">{p.emoji || '✨'}</div>
-                              )}
-
-                              <div className="absolute top-2.5 left-2.5 z-10">
-                                <span className="px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/10 text-[9.5px] font-black uppercase tracking-wider text-amber-300 shadow-sm">
-                                  {p.size || 'Sticker'}
-                                </span>
-                              </div>
-
-                              <div className="absolute top-2.5 right-2.5 z-10">
-                                {inCartQty === 0 ? (
-                                  <button
-                                    type="button"
-                                    disabled={isOutOfStock}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      addToCart(p);
-                                    }}
-                                    className="w-8 h-8 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 flex items-center justify-center font-black shadow-lg shadow-amber-400/30 group-hover:scale-110 active:scale-90 transition-all disabled:opacity-30 cursor-pointer"
-                                    title="Add to order"
-                                  >
-                                    <Plus className="w-4 h-4 stroke-[3]" />
-                                  </button>
-                                ) : (
-                                  <div
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="flex items-center gap-1.5 bg-gradient-to-r from-amber-400 to-yellow-400 text-zinc-950 px-2 py-1 rounded-xl font-black text-xs shadow-lg shadow-amber-400/30 ring-2 ring-zinc-950 animate-scale-up"
-                                  >
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        updateQty(p._id, inCartQty - 1);
-                                      }}
-                                      className="w-5 h-5 rounded-lg hover:bg-black/15 flex items-center justify-center transition-colors cursor-pointer"
-                                    >
-                                      <Minus className="w-3.5 h-3.5 stroke-[3]" />
-                                    </button>
-                                    <span className="min-w-[16px] text-center font-black text-xs">{inCartQty}</span>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        updateQty(p._id, inCartQty + 1);
-                                      }}
-                                      className="w-5 h-5 rounded-lg hover:bg-black/15 flex items-center justify-center transition-colors cursor-pointer"
-                                    >
-                                      <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="p-3 sm:p-3.5 space-y-1 bg-[#121215]/90 border-t border-zinc-800/60">
-                              <h3 className="text-xs sm:text-[13px] font-extrabold text-white truncate group-hover:text-amber-300 transition-colors">
-                                {p.name}
-                              </h3>
-                              <div className="flex items-baseline justify-between pt-0.5">
-                                <span className="text-sm sm:text-base font-black text-amber-400 tracking-tight">
-                                  {formatCurrency(p.sellPrice)}
-                                </span>
-                              </div>
-                              <p
-                                className={`text-[9.5px] font-bold flex items-center gap-1 ${
-                                  isOutOfStock ? 'text-rose-400' : 'text-emerald-400'
-                                }`}
-                              >
-                                <span
-                                  className={`w-1.5 h-1.5 rounded-full ${
-                                    isOutOfStock ? 'bg-rose-400' : 'bg-emerald-400'
-                                  }`}
-                                ></span>
-                                {isOutOfStock ? 'Out of stock' : `${p.stock} in stock`}
-                              </p>
-                            </div>
-
-                            {inCartQty > 0 && <div className="h-1 bg-gradient-to-r from-amber-400 to-yellow-300 w-full" />}
-                          </div>
-                        );
-                      })}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            /* Posters & Frames Grid (2 Columns) - Redesigned Card with Click-to-Add */
-            loading ? (
-              <div className="grid grid-cols-2 gap-3 sm:gap-3.5">
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="h-60 rounded-2xl bg-[#151518] animate-pulse border border-zinc-800/40" />
-                ))}
-              </div>
-            ) : filteredProducts.length === 0 ? (
-              <div key={categoryFilter} className="p-8 text-center rounded-3xl bg-[#151518] border border-zinc-800/80 flex flex-col items-center gap-3 animate-card-in stagger-4">
-                <Package className="w-8 h-8 text-zinc-600" />
-                <div>
-                  <p className="text-xs font-bold text-zinc-300">No products found</p>
-                  <p className="text-[11px] text-zinc-500 mt-0.5">
-                    Try adjusting filters or create a new poster/frame
-                  </p>
-                </div>
-                {onOpenAddProduct && (
-                  <button
-                    onClick={onOpenAddProduct}
-                    className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 font-bold text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Add Product</span>
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div key={categoryFilter} className="grid grid-cols-2 gap-3 sm:gap-3.5">
-                {filteredProducts.map((p, idx) => {
-                  const inCartQty = getCartItemQty(p._id);
-                  const isOutOfStock = p.stock <= 0;
-
-                  return (
-                    <div
-                      key={p._id}
-                      onClick={() => {
-                        if (!isOutOfStock && inCartQty === 0) {
-                          addToCart(p);
-                        }
-                      }}
-                      style={{ animationDelay: `${70 + idx * 30}ms` }}
-                      className={`rounded-2xl sm:rounded-[22px] overflow-hidden transition-all duration-300 flex flex-col justify-between cursor-pointer select-none group active:scale-[0.98] shadow-md ${
-                        isOutOfStock
-                          ? 'opacity-60 grayscale-[40%] cursor-not-allowed bg-[#141417] border border-zinc-800/40'
-                          : inCartQty > 0
-                          ? 'bg-gradient-to-b from-[#242116] via-[#1a1812] to-[#141417] border-2 border-amber-400 ring-2 ring-amber-400/20 shadow-amber-500/10'
-                          : 'bg-[#16161a] hover:bg-[#1c1c22] border border-zinc-800/80 hover:border-zinc-700'
+                    <p
+                      className={`text-[9.5px] font-bold flex items-center gap-1 ${
+                        info.isOutOfStock
+                          ? 'text-rose-400'
+                          : info.lowStock
+                          ? 'text-amber-400'
+                          : 'text-emerald-400'
                       }`}
                     >
-                      {/* Image Preview Container */}
-                      <div className="relative w-full aspect-square bg-[#0e0e11] overflow-hidden flex items-center justify-center">
-                        {p.image ? (
-                          <img
-                            src={p.image}
-                            alt={p.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          />
-                        ) : (
-                          <div className="text-4xl">{p.emoji || (p.category === 'frame' ? '🔲' : '🖼️')}</div>
-                        )}
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          info.isOutOfStock
+                            ? 'bg-rose-400'
+                            : info.lowStock
+                            ? 'bg-amber-400'
+                            : 'bg-emerald-400'
+                        }`}
+                      ></span>
+                      {info.isOutOfStock
+                        ? 'Out of stock'
+                        : info.lowStock
+                        ? `Only ${info.stock} left`
+                        : `${info.stock} in stock`}
+                    </p>
+                  </div>
 
-                        {/* Top-Left Size / Category Pill */}
-                        <div className="absolute top-2.5 left-2.5 z-10">
-                          <span className="px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/10 text-[9.5px] font-black uppercase tracking-wider text-amber-300 shadow-sm">
-                            {p.size || (p.category === 'frame' ? 'Frame' : 'Poster')}
-                          </span>
-                        </div>
-
-                        {/* Top-Right Action: Unselected (+) vs Selected ([-] Qty [+]) */}
-                        <div className="absolute top-2.5 right-2.5 z-10">
-                          {inCartQty === 0 ? (
-                            <button
-                              type="button"
-                              disabled={isOutOfStock}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                addToCart(p);
-                              }}
-                              className="w-8 h-8 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 flex items-center justify-center font-black shadow-lg shadow-amber-400/30 group-hover:scale-110 active:scale-90 transition-all disabled:opacity-30 cursor-pointer"
-                              title="Add to cart"
-                            >
-                              <Plus className="w-4 h-4 stroke-[3]" />
-                            </button>
-                          ) : (
-                            <div
-                              onClick={(e) => e.stopPropagation()}
-                              className="flex items-center gap-1.5 bg-gradient-to-r from-amber-400 to-yellow-400 text-zinc-950 px-2 py-1 rounded-xl font-black text-xs shadow-lg shadow-amber-400/30 ring-2 ring-zinc-950 animate-scale-up"
-                            >
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  updateQty(p._id, inCartQty - 1);
-                                }}
-                                className="w-5 h-5 rounded-lg hover:bg-black/15 flex items-center justify-center transition-colors cursor-pointer"
-                                title="Decrease"
-                              >
-                                <Minus className="w-3.5 h-3.5 stroke-[3]" />
-                              </button>
-                              <span className="min-w-[16px] text-center font-black text-xs">{inCartQty}</span>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  updateQty(p._id, inCartQty + 1);
-                                }}
-                                className="w-5 h-5 rounded-lg hover:bg-black/15 flex items-center justify-center transition-colors cursor-pointer"
-                                title="Increase"
-                              >
-                                <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Info Footer */}
-                      <div className="p-3 sm:p-3.5 space-y-1 bg-[#121215]/90 border-t border-zinc-800/60">
-                        <h3 className="text-xs sm:text-[13px] font-extrabold text-white truncate group-hover:text-amber-300 transition-colors">
-                          {p.name}
-                        </h3>
-
-                        <div className="flex items-baseline justify-between pt-0.5">
-                          <span className="text-sm sm:text-base font-black text-amber-400 tracking-tight">
-                            {formatCurrency(p.sellPrice)}
-                          </span>
-                          {p.category === 'frame' && (
-                            <span className="text-[10px] text-zinc-400 font-medium">Frame</span>
-                          )}
-                        </div>
-
-                        <p
-                          className={`text-[9.5px] font-bold flex items-center gap-1 ${
-                            isOutOfStock
-                              ? 'text-rose-400'
-                              : p.stock <= p.lowStockThreshold
-                              ? 'text-amber-400'
-                              : 'text-emerald-400'
-                          }`}
-                        >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              isOutOfStock
-                                ? 'bg-rose-400'
-                                : p.stock <= p.lowStockThreshold
-                                ? 'bg-amber-400'
-                                : 'bg-emerald-400'
-                            }`}
-                          ></span>
-                          {isOutOfStock
-                            ? 'Out of stock'
-                            : p.stock <= p.lowStockThreshold
-                            ? `Only ${p.stock} left`
-                            : `${p.stock} in stock`}
-                        </p>
-                      </div>
-
-                      {/* Active highlight line */}
-                      {inCartQty > 0 && <div className="h-1 bg-gradient-to-r from-amber-400 to-yellow-300 w-full" />}
-                    </div>
-                  );
-                })}
-              </div>
-            )
-          )}
+                  {/* Active highlight line */}
+                  {inCartQty > 0 && <div className="h-1 bg-gradient-to-r from-amber-400 to-yellow-300 w-full" />}
+                </div>
+              );
+            })}
+          </div>
 
           {/* Floating Bottom Subtotal Bar */}
           {itemCount > 0 && (
