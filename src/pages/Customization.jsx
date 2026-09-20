@@ -235,7 +235,7 @@ export const Customization = ({ onNavigate }) => {
           </div>
         </div>
 
-        {/* <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <button
             onClick={fetchOrdersAndStats}
             className="p-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer border border-zinc-800 shadow-sm"
@@ -243,7 +243,15 @@ export const Customization = ({ onNavigate }) => {
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-amber-400' : ''}`} />
           </button>
-        </div> */}
+
+          <button
+            onClick={handleOpenAddModal}
+            className="py-2.5 px-4 rounded-2xl bg-amber-400 hover:bg-amber-300 text-zinc-950 font-black text-xs sm:text-sm flex items-center gap-1.5 shadow-lg shadow-amber-500/25 active:scale-[0.98] transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            <span>New Custom Order</span>
+          </button>
+        </div>
       </div>
 
       {/* KPI Metrics Banner */}
@@ -298,8 +306,8 @@ export const Customization = ({ onNavigate }) => {
               key={tab.id}
               onClick={() => setStatusFilter(tab.id)}
               className={`py-2 px-3.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${statusFilter === tab.id
-                  ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
-                  : 'bg-[#151518] text-zinc-400 border border-zinc-800 hover:text-white'
+                ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
+                : 'bg-[#151518] text-zinc-400 border border-zinc-800 hover:text-white'
                 }`}
             >
               {tab.label}
@@ -502,17 +510,17 @@ export const Customization = ({ onNavigate }) => {
       </div>
 
       {/* Floating Action Button (FAB) for New Custom Order */}
-      <div className="fixed bottom-22 right-4 sm:right-8 sm:bottom-24 z-40 no-print">
+      <div className="fixed bottom-24 right-4 sm:right-8 sm:bottom-28 z-50 pointer-events-auto no-print">
         <button
           type="button"
           onClick={handleOpenAddModal}
-          className="py-3 px-5 sm:py-3.5 sm:px-6 rounded-full bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-zinc-950 font-black text-xs sm:text-sm flex items-center gap-2 shadow-2xl shadow-amber-500/40 ring-4 ring-zinc-950/80 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer group animate-card-in"
+          className="py-3 px-5 sm:py-3.5 sm:px-6 rounded-full bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-zinc-950 font-black text-xs sm:text-sm flex items-center gap-2.5 shadow-[0_10px_35px_rgba(245,158,11,0.45)] ring-4 ring-[#0c0c0e] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer group"
           title="Create New Custom Order"
         >
-          <div className="w-6 h-6 rounded-full bg-zinc-950 text-amber-300 flex items-center justify-center group-hover:rotate-90 transition-transform duration-300 shadow-sm">
-            <Plus className="w-4 h-4 stroke-[3]" />
+          <div className="w-6 h-6 rounded-full bg-zinc-950 text-amber-300 flex items-center justify-center group-hover:rotate-90 transition-transform duration-300 shadow-md">
+            <Plus className="w-4 h-4 stroke-[3.5]" />
           </div>
-          <span className="tracking-wide uppercase">New Custom Order</span>
+          <span className="tracking-wider uppercase font-black">NEW CUSTOM ORDER</span>
         </button>
       </div>
     </div>
