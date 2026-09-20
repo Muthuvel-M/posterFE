@@ -61,6 +61,18 @@ export const AuthProvider = ({ children }) => {
     throw new Error(res.message || 'Login failed');
   };
 
+  const register = async (name, email, password) => {
+    const res = await api.register({ name, email, password });
+    if (res.success && res.token) {
+      setToken(res.token);
+      setUser(res.user);
+      localStorage.setItem('auraframe_token', res.token);
+      localStorage.setItem('auraframe_user', JSON.stringify(res.user));
+      return res;
+    }
+    throw new Error(res.message || 'Registration failed');
+  };
+
   const googleLogin = async (credentialOrPayload) => {
     const payload = typeof credentialOrPayload === 'string'
       ? { credential: credentialOrPayload }
@@ -85,7 +97,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isAuthenticated: !!token, loading, login, googleLogin, logout }}>
+    <AuthContext.Provider value={{ user, token, isAuthenticated: !!token, loading, login, register, googleLogin, logout }}>
       {children}
     </AuthContext.Provider>
   );
