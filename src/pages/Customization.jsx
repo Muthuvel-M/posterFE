@@ -514,13 +514,12 @@ export const Customization = ({ onNavigate }) => {
         <button
           type="button"
           onClick={handleOpenAddModal}
-          className="py-3 px-5 sm:py-3.5 sm:px-6 rounded-full bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-zinc-950 font-black text-xs sm:text-sm flex items-center gap-2.5 shadow-[0_10px_35px_rgba(245,158,11,0.45)] ring-4 ring-[#0c0c0e] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer group"
+          className="py-3 px-3 sm:py-3.5 sm:px-6 rounded-full bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-zinc-950 font-black text-xs sm:text-sm flex items-center gap-2.5 shadow-[0_10px_35px_rgba(245,158,11,0.45)] ring-4 ring-[#0c0c0e] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer group"
           title="Create New Custom Order"
         >
           <div className="w-6 h-6 rounded-full bg-zinc-950 text-amber-300 flex items-center justify-center group-hover:rotate-90 transition-transform duration-300 shadow-md">
             <Plus className="w-4 h-4 stroke-[3.5]" />
           </div>
-          <span className="tracking-wider uppercase font-black">NEW CUSTOM ORDER</span>
         </button>
       </div>
     </div>

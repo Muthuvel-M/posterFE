@@ -57,7 +57,7 @@ export const CustomOrderModal = ({
   const [matPrice, setMatPrice] = useState(50);
   const [glassPrice, setGlassPrice] = useState(80);
   const [totalPrice, setTotalPrice] = useState(530);
-  const [advancePaid, setAdvancePaid] = useState(250);
+  const [advancePaid, setAdvancePaid] = useState(265); // Default 50% (half of 530)
   const [dueDate, setDueDate] = useState('');
   const [customNotes, setCustomNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -113,12 +113,13 @@ export const CustomOrderModal = ({
       setFramePrice(order.pricing?.framePrice ?? 250);
       setMatPrice(order.pricing?.matPrice ?? 50);
       setGlassPrice(order.pricing?.glassPrice ?? 80);
-      setTotalPrice(order.pricing?.totalPrice ?? 530);
-      setAdvancePaid(order.pricing?.advancePaid ?? 250);
+      const existingTotal = order.pricing?.totalPrice ?? 530;
+      setTotalPrice(existingTotal);
+      setAdvancePaid(order.pricing?.advancePaid ?? Math.round(existingTotal / 2));
       setCustomNotes(order.customNotes || '');
       setDueDate(safeDateToInput(order.dueDate));
     } else {
-      // Defaults for new custom order
+      // Defaults for new custom order (Advance is 50% of total)
       setCustomerName('');
       setCustomerPhone('');
       setCustomerInstagram('');
@@ -139,8 +140,9 @@ export const CustomOrderModal = ({
       setFramePrice(250);
       setMatPrice(50);
       setGlassPrice(80);
-      setTotalPrice(530);
-      setAdvancePaid(250);
+      const initialTotal = 530;
+      setTotalPrice(initialTotal);
+      setAdvancePaid(Math.round(initialTotal / 2)); // Default half (₹265)
       setCustomNotes('');
       // Default due date: 3 days from today
       const d = new Date();
@@ -183,6 +185,9 @@ export const CustomOrderModal = ({
     setMatPrice(mat);
     setGlassPrice(glass);
     setTotalPrice(calculatedTotal);
+    if (!isEditing) {
+      setAdvancePaid(Math.round(calculatedTotal / 2)); // Default half of total
+    }
   };
 
   const handleSizeTypeChange = (sz) => {
@@ -305,15 +310,13 @@ export const CustomOrderModal = ({
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/85 backdrop-blur-md no-print overflow-hidden ${
-        isClosing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop-in'
-      }`}
+      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/85 backdrop-blur-md no-print overflow-hidden ${isClosing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop-in'
+        }`}
       onClick={requestClose}
     >
       <div
-        className={`w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] bg-[#121215] border border-zinc-800 shadow-2xl overflow-hidden text-white max-h-[92vh] flex flex-col my-0 sm:my-auto ${
-          isClosing ? 'animate-modal-slide-down' : 'animate-modal-slide-up'
-        }`}
+        className={`w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] bg-[#121215] border border-zinc-800 shadow-2xl overflow-hidden text-white max-h-[92vh] flex flex-col my-0 sm:my-auto ${isClosing ? 'animate-modal-slide-down' : 'animate-modal-slide-up'
+          }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -382,7 +385,7 @@ export const CustomOrderModal = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            {/* <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               <div>
                 <label className="block text-[11px] font-bold text-zinc-300 mb-1">
                   Instagram Handle (Optional)
@@ -413,11 +416,11 @@ export const CustomOrderModal = ({
                   />
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
 
           {/* Section 2: Order Title & Live Artwork Preview Simulator */}
-          <div className="p-4 rounded-2xl bg-[#18181f] border border-zinc-800/80 space-y-3">
+          {/* <div className="p-4 rounded-2xl bg-[#18181f] border border-zinc-800/80 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase tracking-wider text-amber-400">
                 2. ARTWORK & LIVE FRAME SIMULATOR
@@ -440,7 +443,6 @@ export const CustomOrderModal = ({
               />
             </div>
 
-            {/* Live Interactive Visual Framing Mockup */}
             <div className="flex flex-col items-center justify-center p-4 rounded-2xl bg-zinc-950 border border-zinc-800/80">
               <div
                 className={`max-w-[200px] w-full aspect-[4/5] rounded-xl overflow-hidden flex items-center justify-center relative transition-all duration-300 border-8 ${currentFrameStyle} ${currentMatStyle}`}
@@ -477,12 +479,12 @@ export const CustomOrderModal = ({
                 </label>
               )}
             </div>
-          </div>
+          </div> */}
 
           {/* Section 3: Item Type, Dimensions & Finish */}
           <div className="p-4 rounded-2xl bg-[#18181f] border border-zinc-800/80 space-y-3">
             <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block">
-              3. ITEM TYPE & DIMENSIONS
+              2. ITEM TYPE & DIMENSIONS
             </span>
 
             {/* Item Type Pills */}
@@ -504,11 +506,10 @@ export const CustomOrderModal = ({
                       handleFramedToggle(true);
                     }
                   }}
-                  className={`py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    itemType === t.id
-                      ? 'bg-amber-400 text-zinc-950 shadow-md'
-                      : 'bg-[#121215] text-zinc-400 border border-zinc-800 hover:text-white'
-                  }`}
+                  className={`py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${itemType === t.id
+                    ? 'bg-amber-400 text-zinc-950 shadow-md'
+                    : 'bg-[#121215] text-zinc-400 border border-zinc-800 hover:text-white'
+                    }`}
                 >
                   {t.label}
                 </button>
@@ -521,16 +522,15 @@ export const CustomOrderModal = ({
                 Size Tier
               </label>
               <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
-                {['A6', 'A5', 'A4', 'A3', '12x18', '18x24', 'custom'].map((sz) => (
+                {['A6', 'A5', 'A4', 'A3'].map((sz) => (
                   <button
                     key={sz}
                     type="button"
                     onClick={() => handleSizeTypeChange(sz)}
-                    className={`py-1.5 rounded-lg text-xs font-extrabold uppercase transition-all cursor-pointer ${
-                      sizeType === sz
-                        ? 'bg-amber-400 text-zinc-950 shadow-sm'
-                        : 'bg-[#121215] text-zinc-400 border border-zinc-800 hover:text-white'
-                    }`}
+                    className={`py-1.5 rounded-lg text-xs font-extrabold uppercase transition-all cursor-pointer ${sizeType === sz
+                      ? 'bg-amber-400 text-zinc-950 shadow-sm'
+                      : 'bg-[#121215] text-zinc-400 border border-zinc-800 hover:text-white'
+                      }`}
                   >
                     {sz === '12x18' ? '12×18"' : sz === '18x24' ? '18×24"' : sz}
                   </button>
@@ -567,7 +567,7 @@ export const CustomOrderModal = ({
             )}
 
             {/* Paper Finish & Orientation */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            {/* <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               <div>
                 <label className="block text-[11px] font-bold text-zinc-300 mb-1">
                   Paper / Print Finish
@@ -595,28 +595,26 @@ export const CustomOrderModal = ({
                       key={or}
                       type="button"
                       onClick={() => setOrientation(or)}
-                      className={`py-2 rounded-xl text-[11px] font-bold capitalize transition-all cursor-pointer ${
-                        orientation === or
-                          ? 'bg-zinc-700 text-amber-300 border border-amber-400/50'
-                          : 'bg-[#121215] text-zinc-400 border border-zinc-800 hover:text-white'
-                      }`}
+                      className={`py-2 rounded-xl text-[11px] font-bold capitalize transition-all cursor-pointer ${orientation === or
+                        ? 'bg-zinc-700 text-amber-300 border border-amber-400/50'
+                        : 'bg-[#121215] text-zinc-400 border border-zinc-800 hover:text-white'
+                        }`}
                     >
                       {or}
                     </button>
                   ))}
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
 
           {/* Section 4: Framing Specifications (If Framed) */}
-          {isFramed && (
+          {/* {isFramed && (
             <div className="p-4 rounded-2xl bg-[#18181f] border border-zinc-800/80 space-y-3">
               <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block">
                 4. FRAMING & GLASS OPTIONS
               </span>
 
-              {/* Frame Color/Style */}
               <div>
                 <label className="block text-[11px] font-bold text-zinc-300 mb-1.5">
                   Frame Style / Material
@@ -634,11 +632,10 @@ export const CustomOrderModal = ({
                       key={f.id}
                       type="button"
                       onClick={() => setFrameColor(f.id)}
-                      className={`p-2 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                        frameColor === f.id
-                          ? 'bg-[#2a281c] border-amber-400 text-amber-300 shadow-md ring-1 ring-amber-400/40'
-                          : 'bg-[#121215] border-zinc-800 text-zinc-400 hover:text-white'
-                      }`}
+                      className={`p-2 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${frameColor === f.id
+                        ? 'bg-[#2a281c] border-amber-400 text-amber-300 shadow-md ring-1 ring-amber-400/40'
+                        : 'bg-[#121215] border-zinc-800 text-zinc-400 hover:text-white'
+                        }`}
                     >
                       <span className={`w-3 h-3 rounded-full ${f.color} shrink-0 border`} />
                       <span className="truncate">{f.label}</span>
@@ -647,7 +644,6 @@ export const CustomOrderModal = ({
                 </div>
               </div>
 
-              {/* Mount / Mat Board & Glass Type */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div>
                   <label className="block text-[11px] font-bold text-zinc-300 mb-1">
@@ -688,12 +684,12 @@ export const CustomOrderModal = ({
                 </div>
               </div>
             </div>
-          )}
+          )} */}
 
           {/* Section 5: Pricing, Advance Paid & Balance Due */}
           <div className="p-4 rounded-2xl bg-[#18181f] border border-zinc-800/80 space-y-3">
             <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block">
-              5. PRICING & DEPOSIT
+              3. PRICING & DEPOSIT
             </span>
 
             <div className="grid grid-cols-2 gap-3">
@@ -707,16 +703,25 @@ export const CustomOrderModal = ({
                     type="number"
                     min="0"
                     value={totalPrice}
-                    onChange={(e) => setTotalPrice(Number(e.target.value) || 0)}
+                    onChange={(e) => {
+                      const newTotal = Number(e.target.value) || 0;
+                      setTotalPrice(newTotal);
+                      setAdvancePaid(Math.round(newTotal / 2)); // Auto half advance
+                    }}
                     className="w-full pl-8 pr-3 py-2.5 rounded-xl bg-[#121215] border border-zinc-700 text-sm font-black text-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-zinc-300 mb-1">
-                  Advance Paid (₹)
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold text-zinc-300">
+                    Advance Paid (₹)
+                  </label>
+                  <span className="text-[10px] font-extrabold text-emerald-400 uppercase">
+                    50% Default
+                  </span>
+                </div>
                 <div className="relative">
                   <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-400" />
                   <input
@@ -731,13 +736,37 @@ export const CustomOrderModal = ({
               </div>
             </div>
 
+            {/* Quick Deposit Presets */}
+            <div className="flex items-center gap-1.5 pt-0.5">
+              <button
+                type="button"
+                onClick={() => setAdvancePaid(Math.round(Number(totalPrice) / 2))}
+                className="py-1 px-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-bold text-amber-300 transition-colors cursor-pointer"
+              >
+                Half Deposit (50% = ₹{Math.round(Number(totalPrice) / 2)})
+              </button>
+              <button
+                type="button"
+                onClick={() => setAdvancePaid(Number(totalPrice))}
+                className="py-1 px-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-bold text-emerald-400 transition-colors cursor-pointer"
+              >
+                Full Paid (100%)
+              </button>
+              <button
+                type="button"
+                onClick={() => setAdvancePaid(0)}
+                className="py-1 px-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-bold text-zinc-400 transition-colors cursor-pointer"
+              >
+                No Advance (₹0)
+              </button>
+            </div>
+
             {/* Live Balance Summary Banner */}
             <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-between text-xs">
               <span className="text-zinc-400 font-semibold">Remaining Due Balance:</span>
               <span
-                className={`font-black font-mono text-sm ${
-                  balanceDue > 0 ? 'text-rose-400' : 'text-emerald-400'
-                }`}
+                className={`font-black font-mono text-sm ${balanceDue > 0 ? 'text-rose-400' : 'text-emerald-400'
+                  }`}
               >
                 {balanceDue > 0 ? `₹${balanceDue} Pending` : 'Fully Paid ✓'}
               </span>

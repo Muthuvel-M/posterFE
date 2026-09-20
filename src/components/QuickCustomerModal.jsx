@@ -68,15 +68,13 @@ export const QuickCustomerModal = ({ isOpen, onClose, customers = [], onCustomer
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/85 backdrop-blur-md no-print ${
-        isClosing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop-in'
-      }`}
+      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/85 backdrop-blur-md no-print ${isClosing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop-in'
+        }`}
       onClick={requestClose}
     >
       <div
-        className={`glass-modal w-full max-w-md rounded-t-[32px] sm:rounded-3xl overflow-hidden shadow-2xl ${
-          isClosing ? 'animate-modal-slide-down' : 'animate-modal-slide-up'
-        }`}
+        className={`glass-modal w-full max-w-md rounded-t-[32px] sm:rounded-3xl overflow-hidden shadow-2xl ${isClosing ? 'animate-modal-slide-down' : 'animate-modal-slide-up'
+          }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -102,22 +100,20 @@ export const QuickCustomerModal = ({ isOpen, onClose, customers = [], onCustomer
           <button
             type="button"
             onClick={() => setMode('select')}
-            className={`flex-1 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-              mode === 'select'
+            className={`flex-1 py-1.5 rounded-xl text-xs font-semibold transition-all ${mode === 'select'
                 ? 'bg-white dark:bg-slate-800 text-brand-600 dark:text-brand-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
+              }`}
           >
             Search Directory ({customers.length})
           </button>
           <button
             type="button"
             onClick={() => setMode('create')}
-            className={`flex-1 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-              mode === 'create'
+            className={`flex-1 py-1.5 rounded-xl text-xs font-semibold transition-all ${mode === 'create'
                 ? 'bg-white dark:bg-slate-800 text-brand-600 dark:text-brand-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
+              }`}
           >
             + Quick Add
           </button>
@@ -165,11 +161,10 @@ export const QuickCustomerModal = ({ isOpen, onClose, customers = [], onCustomer
                   <button
                     key={c._id}
                     onClick={() => handleSelect(c)}
-                    className={`w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between ${
-                      customer?._id === c._id
+                    className={`w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between ${customer?._id === c._id
                         ? 'bg-brand-50 dark:bg-brand-950/60 border-brand-400 dark:border-brand-600'
                         : 'bg-white dark:bg-slate-800/60 border-slate-200/80 dark:border-slate-700/80 hover:border-brand-400'
-                    }`}
+                      }`}
                   >
                     <div>
                       <h4 className="text-xs font-bold text-slate-900 dark:text-white">{c.name}</h4>
