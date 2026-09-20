@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { Layers, Sparkles, Lock, Mail, ArrowRight, ShieldCheck, Check } from 'lucide-react';
+import { Lock, Mail, User, ArrowRight, ShieldCheck, UserPlus, LogIn } from 'lucide-react';
 import logoImg from '../assets/2.png';
 
 export const Login = () => {
-  const { login, googleLogin } = useAuth();
+  const { login, register, googleLogin } = useAuth();
   const { showToast } = useToast();
 
-  const [email, setEmail] = useState('admin@auraframe.com');
-  const [password, setPassword] = useState('admin123');
+  const [mode, setMode] = useState('login'); // 'login' | 'register'
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const googleBtnRef = useRef(null);
@@ -76,7 +78,7 @@ export const Login = () => {
 
   const handleGoogleSignInClick = () => {
     if (!googleClientId) {
-      handleSimulatedGoogleLogin();
+      showToast('Please sign in using your email and password below.', 'info');
       return;
     }
 
@@ -84,56 +86,40 @@ export const Login = () => {
       try {
         window.google.accounts.id.prompt((notification) => {
           if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            handleSimulatedGoogleLogin();
+            showToast('Google Sign-in prompt was closed. Please use email & password.', 'info');
           }
         });
       } catch (err) {
-        handleSimulatedGoogleLogin();
+        showToast('Please enter your email and password below.', 'info');
       }
     } else {
-      handleSimulatedGoogleLogin();
-    }
-  };
-
-  const handleSimulatedGoogleLogin = async () => {
-    try {
-      setGoogleLoading(true);
-      await login('admin@auraframe.com', 'admin123');
-      showToast('Signed in with Google Account (mmuthuvel126@gmail.com)!', 'success');
-    } catch (err) {
-      showToast(err.message || 'Google login failed', 'error');
-    } finally {
-      setGoogleLoading(false);
+      showToast('Please enter your email and password below.', 'info');
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email.trim() || !password.trim()) {
-      showToast('Please enter both email and password', 'error');
+      showToast('Please enter your email and password', 'error');
+      return;
+    }
+
+    if (mode === 'register' && !name.trim()) {
+      showToast('Please enter your name/store name', 'error');
       return;
     }
 
     try {
       setLoading(true);
-      await login(email.trim(), password);
-      showToast('Welcome back to AuraFrame POS!', 'success');
+      if (mode === 'register') {
+        await register(name.trim(), email.trim(), password);
+        showToast('Account created successfully! Welcome to AuraFrame POS.', 'success');
+      } else {
+        await login(email.trim(), password);
+        showToast('Welcome back to AuraFrame POS!', 'success');
+      }
     } catch (err) {
-      showToast(err.message || 'Invalid login credentials', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDemoLogin = async () => {
-    setEmail('admin@auraframe.com');
-    setPassword('admin123');
-    try {
-      setLoading(true);
-      await login('admin@auraframe.com', 'admin123');
-      showToast('Signed in with Demo Admin credentials!', 'success');
-    } catch (err) {
-      showToast(err.message || 'Demo login failed', 'error');
+      showToast(err.message || (mode === 'register' ? 'Registration failed' : 'Invalid email or password'), 'error');
     } finally {
       setLoading(false);
     }
@@ -161,6 +147,34 @@ export const Login = () => {
 
         {/* Login Card */}
         <div className="rounded-[32px] p-6 sm:p-8 bg-[#141418]/90 backdrop-blur-xl border border-zinc-800/90 shadow-2xl space-y-5">
+          {/* Mode Switcher Tabs */}
+          <div className="grid grid-cols-2 p-1 bg-zinc-900/90 rounded-2xl border border-zinc-800">
+            <button
+              type="button"
+              onClick={() => setMode('login')}
+              className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                mode === 'login'
+                  ? 'bg-amber-500 text-zinc-950 shadow-md'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>Sign In</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('register')}
+              className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                mode === 'register'
+                  ? 'bg-amber-500 text-zinc-950 shadow-md'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>Create Account</span>
+            </button>
+          </div>
+
           {/* Google OAuth Button */}
           <div>
             <div ref={googleBtnRef} className="hidden" />
@@ -174,7 +188,6 @@ export const Login = () => {
                 <div className="w-5 h-5 border-2 border-zinc-900 border-t-transparent rounded-full animate-spin" />
               ) : (
                 <>
-                  {/* Google Multi-Color SVG G Icon */}
                   <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
                     <path
                       fill="#4285F4"
@@ -203,16 +216,35 @@ export const Login = () => {
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-zinc-800" />
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-500">
-              OR EMAIL PASSWORD
+              OR WITH EMAIL & PASSWORD
             </span>
             <div className="flex-1 h-px bg-zinc-800" />
           </div>
 
           {/* Credentials Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
+            {mode === 'register' && (
+              <div>
+                <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
+                  Full Name / Store Name
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. Aura Frame Store"
+                    className="w-full pl-10 pr-4 py-3 rounded-2xl bg-[#1c1c22] border border-zinc-800 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-all"
+                  />
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-                Admin Email
+                Email Address
               </label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
@@ -221,7 +253,7 @@ export const Login = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@auraframe.com"
+                  placeholder="name@example.com"
                   className="w-full pl-10 pr-4 py-3 rounded-2xl bg-[#1c1c22] border border-zinc-800 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-all"
                 />
               </div>
@@ -238,7 +270,7 @@ export const Login = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder={mode === 'register' ? 'Min. 6 characters' : 'Enter your password'}
                   className="w-full pl-10 pr-4 py-3 rounded-2xl bg-[#1c1c22] border border-zinc-800 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-all"
                 />
               </div>
@@ -253,25 +285,12 @@ export const Login = () => {
                 <div className="w-5 h-5 border-2 border-zinc-950 border-t-transparent rounded-full animate-spin" />
               ) : (
                 <>
-                  <span>Sign In to POS</span>
+                  <span>{mode === 'register' ? 'Create My Account' : 'Sign In to POS'}</span>
                   <ArrowRight className="w-4 h-4 stroke-[2.5]" />
                 </>
               )}
             </button>
           </form>
-
-          {/* Quick Demo Helper */}
-          <div className="pt-2 border-t border-zinc-800/80 text-center">
-            <button
-              type="button"
-              onClick={handleDemoLogin}
-              disabled={loading || googleLoading}
-              className="w-full py-2.5 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs font-semibold border border-zinc-800 transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>1-Click Demo Admin Login</span>
-            </button>
-          </div>
         </div>
 
         {/* Footer Security Badge */}
@@ -283,4 +302,3 @@ export const Login = () => {
     </div>
   );
 };
-
