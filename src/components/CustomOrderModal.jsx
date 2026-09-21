@@ -54,7 +54,9 @@ export const CustomOrderModal = ({
 
   // Pricing & Advance
   const [totalPrice, setTotalPrice] = useState('');
+  const [costPrice, setCostPrice] = useState('');
   const [advancePaid, setAdvancePaid] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('upi'); // 'upi' | 'cash'
   const [customNotes, setCustomNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -178,7 +180,9 @@ export const CustomOrderModal = ({
       // Pricing
       const existingTotal = order.pricing?.totalPrice !== undefined ? String(order.pricing.totalPrice) : '';
       setTotalPrice(existingTotal);
+      setCostPrice(order.pricing?.costPrice !== undefined ? String(order.pricing.costPrice) : '');
       setAdvancePaid(order.pricing?.advancePaid !== undefined ? String(order.pricing.advancePaid) : '');
+      setPaymentMethod(order.paymentMethod || 'upi');
       setCustomNotes(order.customNotes || '');
     } else {
       // Defaults for new custom order (No hardcoded default prices)
@@ -194,7 +198,9 @@ export const CustomOrderModal = ({
       setPosterTiers(initialPoster);
       setFrameTiers(initialFrame);
       setTotalPrice('');
+      setCostPrice('');
       setAdvancePaid('');
+      setPaymentMethod('upi');
       setCustomNotes('');
 
       // Today as Order Placed Date
@@ -339,8 +345,11 @@ export const CustomOrderModal = ({
   const calculatedTotal = posterSubtotal + frameSubtotal;
 
   const numericTotal = Number(totalPrice) || 0;
+  const numericCost = Number(costPrice) || 0;
   const numericAdvance = Number(advancePaid) || 0;
   const balanceDue = Math.max(0, numericTotal - numericAdvance);
+  const estimatedProfit = Math.max(0, numericTotal - numericCost);
+  const profitMargin = numericTotal > 0 ? ((estimatedProfit / numericTotal) * 100).toFixed(1) : 0;
 
   const totalPosterUnits = posterTiers.reduce((acc, c) => acc + (Number(c.count) || 0), 0);
   const totalFrameUnits = frameTiers.reduce((acc, c) => acc + (Number(c.count) || 0), 0);
@@ -450,10 +459,13 @@ export const CustomOrderModal = ({
           framePrice: frameSubtotal,
           matPrice: 0,
           glassPrice: 0,
+          costPrice: numericCost,
+          profit: estimatedProfit,
           totalPrice: finalTotal,
           advancePaid: numericAdvance,
           balanceDue: Math.max(0, finalTotal - numericAdvance),
         },
+        paymentMethod,
       };
 
       let res;
@@ -973,55 +985,114 @@ export const CustomOrderModal = ({
           </div>
 
           {/* ─────────────────────────────────────────────────────────────
-              SECTION 5: PRICING & ADVANCE
+              SECTION 5: PRICING, COST & ADVANCE
              ───────────────────────────────────────────────────────────── */}
           <div className="p-4 rounded-2xl bg-[#18181f] border border-zinc-800/80 space-y-3">
-            <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block">
-              5. PRICING & ADVANCE
-            </span>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block">
+                5. PRICING, COST & ADVANCE
+              </span>
+              {numericTotal > 0 && (
+                <span className="text-[10px] font-bold text-emerald-400">
+                  Est. Profit: ₹{estimatedProfit} ({profitMargin}%)
+                </span>
+              )}
+            </div>
 
-            <div className="grid grid-cols-2 gap-3 min-w-0">
+            <div className="grid grid-cols-3 gap-2.5 min-w-0">
+              {/* Quoted Price */}
               <div>
-                <label className="block text-[11px] font-bold text-zinc-300 mb-1">
-                  Total Quoted Price *
+                <label className="block text-[10px] font-bold text-zinc-300 mb-1">
+                  Selling Price *
                 </label>
                 <div className="relative">
-                  <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-amber-400" />
+                  <IndianRupee className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-amber-400" />
                   <input
                     type="number"
                     min="0"
                     placeholder="0"
                     value={totalPrice}
                     onChange={(e) => setTotalPrice(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#121215] border border-zinc-700/80 text-sm font-black text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    className="w-full pl-7 pr-2 py-2 rounded-xl bg-[#121215] border border-zinc-700/80 text-xs sm:text-sm font-black text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-400"
                   />
                 </div>
                 {calculatedTotal > 0 && totalPrice !== String(calculatedTotal) && (
                   <button
                     type="button"
                     onClick={() => setTotalPrice(String(calculatedTotal))}
-                    className="text-[10px] text-amber-400 hover:underline mt-1 block"
+                    className="text-[9px] text-amber-400 hover:underline mt-0.5 block truncate"
                   >
-                    Sync with Tiers (₹{calculatedTotal})
+                    Sync (₹{calculatedTotal})
                   </button>
                 )}
               </div>
 
+              {/* Material/Production Cost */}
               <div>
-                <label className="block text-[11px] font-bold text-zinc-300 mb-1">
-                  Advance Collected
+                <label className="block text-[10px] font-bold text-zinc-300 mb-1">
+                  Est. Cost (₹)
                 </label>
                 <div className="relative">
-                  <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-400" />
+                  <IndianRupee className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-rose-400" />
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={costPrice}
+                    onChange={(e) => setCostPrice(e.target.value)}
+                    className="w-full pl-7 pr-2 py-2 rounded-xl bg-[#121215] border border-zinc-700/80 text-xs sm:text-sm font-bold text-rose-300 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  />
+                </div>
+              </div>
+
+              {/* Advance Paid */}
+              <div>
+                <label className="block text-[10px] font-bold text-zinc-300 mb-1">
+                  Advance Paid
+                </label>
+                <div className="relative">
+                  <IndianRupee className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-emerald-400" />
                   <input
                     type="number"
                     min="0"
                     placeholder="0"
                     value={advancePaid}
                     onChange={(e) => setAdvancePaid(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#121215] border border-zinc-700/80 text-sm font-black text-emerald-300 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    className="w-full pl-7 pr-2 py-2 rounded-xl bg-[#121215] border border-zinc-700/80 text-xs sm:text-sm font-black text-emerald-300 focus:outline-none focus:ring-2 focus:ring-amber-400"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Payment Method Switcher (Affects In-Hand Cash calculation) */}
+            <div className="pt-1">
+              <label className="block text-[10px] font-bold text-zinc-400 mb-1">
+                Payment Collection Mode (Affects In-Hand Cash Drawer)
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('upi')}
+                  className={`py-1.5 px-2.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    paymentMethod === 'upi'
+                      ? 'bg-amber-950/80 border-amber-500 text-amber-300 shadow-sm'
+                      : 'bg-[#121215] border-zinc-800 text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <span>📱 UPI Online</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('cash')}
+                  className={`py-1.5 px-2.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    paymentMethod === 'cash'
+                      ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300 shadow-sm'
+                      : 'bg-[#121215] border-zinc-800 text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <span>💵 Cash in Hand</span>
+                </button>
               </div>
             </div>
 

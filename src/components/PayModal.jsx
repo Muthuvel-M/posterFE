@@ -44,7 +44,9 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
 
   const rawUpiId = settings?.upiId?.trim() || 'mmuthuvel126@ibl';
   const isUpiConfigured = Boolean(rawUpiId && UPI_REGEX.test(rawUpiId));
-  const businessName = settings?.businessName?.trim() || settings?.upiName?.trim() || 'Muthuvel M';
+  const businessName = settings?.businessName && !settings.businessName.includes('Muthuvel')
+    ? settings.businessName.trim()
+    : 'AuraFrame26';
 
   // Initialize/Regenerate pending sale when PayModal opens or when total changes
   useEffect(() => {

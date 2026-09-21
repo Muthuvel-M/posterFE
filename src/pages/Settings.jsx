@@ -62,7 +62,9 @@ export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNaviga
     if (settings) {
       setFormData((prev) => ({
         ...prev,
-        businessName: settings.businessName || 'Muthuvel M',
+        businessName: settings.businessName && !settings.businessName.includes('Muthuvel')
+          ? settings.businessName
+          : 'AuraFrame26',
         paymentMode: settings.paymentMode || 'direct',
         upiId: settings.upiId || '',
         secondaryUpiId: settings.secondaryUpiId || '',
@@ -109,10 +111,12 @@ export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNaviga
   const handleExportData = async () => {
     try {
       showToast('Preparing live data export from database...', 'info');
-      const [prodsRes, salesRes, custsRes] = await Promise.all([
+      const [prodsRes, salesRes, custsRes, customOrdersRes, expensesRes] = await Promise.all([
         api.getProducts({ active: 'all' }).catch(() => ({ data: [] })),
         api.getSales().catch(() => ({ data: [] })),
         api.getCustomers().catch(() => ({ data: [] })),
+        api.getCustomOrders().catch(() => ({ data: [] })),
+        api.getExpenses({ timeframe: 'all' }).catch(() => ({ data: [] })),
       ]);
 
       const data = {
@@ -122,6 +126,8 @@ export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNaviga
         products: prodsRes?.data || [],
         sales: salesRes?.data || [],
         customers: custsRes?.data || [],
+        customOrders: customOrdersRes?.data || [],
+        expenses: expensesRes?.data || [],
       };
 
       const jsonBlob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });

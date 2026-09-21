@@ -147,4 +147,20 @@ export const api = {
       body: JSON.stringify(statusData),
     }),
   deleteCustomOrder: (id) => request(`/custom-orders/${id}`, { method: 'DELETE' }),
+
+  // Expenses
+  getExpenses: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return request(`/expenses${query ? `?${query}` : ''}`);
+  },
+  getExpenseStats: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return request(`/expenses/stats${query ? `?${query}` : ''}`);
+  },
+  getExpenseById: (id) => request(`/expenses/${id}`),
+  createExpense: (expenseData) =>
+    request('/expenses', { method: 'POST', body: JSON.stringify(expenseData) }),
+  updateExpense: (id, expenseData) =>
+    request(`/expenses/${id}`, { method: 'PUT', body: JSON.stringify(expenseData) }),
+  deleteExpense: (id) => request(`/expenses/${id}`, { method: 'DELETE' }),
 };

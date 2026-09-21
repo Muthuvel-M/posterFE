@@ -63,7 +63,7 @@ export const generateUPIUrl = ({ upiId, upiName, amount, saleNumber }) => {
 export const generateWhatsAppReceiptUrl = (sale, settings) => {
   if (!sale) return '';
   const customerName =
-    sale.customerSnapshot?.name || sale.customer?.name || sale.customerName || 'Friend';
+    sale.customerSnapshot?.name || sale.customer?.name || sale.customerName || 'Walk-in Customer';
   const rawPhone =
     sale.customerSnapshot?.phone || sale.customer?.phone || sale.phone || sale.customerPhone || '';
 
@@ -114,7 +114,7 @@ export const generateWhatsAppReceiptUrl = (sale, settings) => {
 export const generateCustomOrderWhatsAppReceiptUrl = (order, settings) => {
   if (!order) return '';
   const customerName =
-    order.customerSnapshot?.name || order.customer?.name || order.customerName || 'Friend';
+    order.customerSnapshot?.name || order.customer?.name || order.customerName || 'Walk-in Customer';
   const rawPhone =
     order.customerSnapshot?.phone || order.customer?.phone || order.phone || '';
 
@@ -201,9 +201,13 @@ export const generateCustomOrderWhatsAppReceiptUrl = (order, settings) => {
  */
 export const generateReceiptHTML = (sale, settings) => {
   if (!sale) return '';
-  const customerName = sale.customerSnapshot?.name || sale.customer?.name || 'Valued Customer';
+  const customerName =
+    sale.customerSnapshot?.name || sale.customer?.name || sale.customerName || 'Walk-in Customer';
   const saleNumber = sale.saleNumber || 'INV-0001';
-  const businessName = settings?.businessName || 'AuraFrame';
+  const businessName =
+    settings?.businessName && !settings.businessName.includes('Muthuvel')
+      ? settings.businessName
+      : 'AuraFrame26';
   
   const saleDate = sale.createdAt ? new Date(sale.createdAt) : new Date();
   const dateStr = saleDate.toLocaleDateString('en-GB', {
@@ -390,5 +394,363 @@ export const generateReceiptHTML = (sale, settings) => {
 </body>
 </html>`;
 };
+
+/**
+ * Returns plain text message receipt for clipboard copy or sharing
+ */
+export const getCustomOrderReceiptText = (order, settings) => {
+  if (!order) return '';
+  const customerName =
+    order.customerSnapshot?.name || order.customer?.name || order.customerName || 'Walk-in Customer';
+  const orderNum = order.orderNumber || 'AF-CUST';
+  const orderTitle = order.title || 'Custom Order';
+  const placedDate = order.orderDate ? formatDate(order.orderDate) : formatDate(order.createdAt || new Date());
+  const deliveryDate = order.deliveryDate ? formatDate(order.deliveryDate) : formatDate(order.dueDate);
+
+  let msg = `Thank you, ${customerName}! 💛\n`;
+  msg += `Your AuraFrame custom order is confirmed, and your receipt is attached. 🧾\n`;
+  msg += `Hope your walls glow with your new posters! ✨\n`;
+  msg += `Tag us @aura.frame26 when you put them up 📸\n\n`;
+  msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
+  msg += `🧾 *CUSTOM ORDER #${orderNum}*\n`;
+  msg += `📦 *Order:* ${orderTitle}\n`;
+  msg += `📅 *Placed Date:* ${placedDate}\n`;
+  if (deliveryDate && deliveryDate !== '-') {
+    msg += `🚚 *Expected Delivery:* ${deliveryDate}\n`;
+  }
+  msg += `\n`;
+
+  // Posters
+  const posterTiers = Array.isArray(order.posterTiers) && order.posterTiers.length > 0
+    ? order.posterTiers
+    : (Array.isArray(order.sizeTiers) ? order.sizeTiers.filter((st) => st.type === 'poster' || (st.posterPrice && Number(st.posterPrice) > 0)) : []);
+
+  if (posterTiers.length > 0) {
+    msg += `🎨 *Poster Sizes:*\n`;
+    posterTiers.forEach((pt) => {
+      const count = Number(pt.count) || 1;
+      const price = Number(pt.price) || Number(pt.posterPrice) || 0;
+      msg += `• ${count}× ${pt.size || 'A4'} — ₹${count * price}\n`;
+    });
+    msg += `\n`;
+  }
+
+  // Frames
+  const frameTiers = Array.isArray(order.frameTiers) && order.frameTiers.length > 0
+    ? order.frameTiers
+    : (Array.isArray(order.sizeTiers) ? order.sizeTiers.filter((st) => st.type === 'frame' || (st.framePrice && Number(st.framePrice) > 0)) : []);
+
+  if (frameTiers.length > 0) {
+    msg += `🔲 *Frame Sizes:*\n`;
+    frameTiers.forEach((ft) => {
+      const count = Number(ft.count) || 1;
+      const price = Number(ft.price) || Number(ft.framePrice) || 0;
+      msg += `• ${count}× ${ft.size || 'A4'} — ₹${count * price}\n`;
+    });
+    msg += `\n`;
+  }
+
+  if (order.customNotes) {
+    msg += `📝 *Notes:* ${order.customNotes}\n\n`;
+  }
+
+  const totalPrice = Number(order.pricing?.totalPrice) || 0;
+  const advancePaid = Number(order.pricing?.advancePaid) || 0;
+  const balanceDue = Number(order.pricing?.balanceDue) || Math.max(0, totalPrice - advancePaid);
+  const payMethodStr = (order.paymentMethod || 'upi').toUpperCase();
+
+  msg += `─────────────────────\n`;
+  msg += `*Total Quoted: ₹${totalPrice}*\n`;
+  msg += `Advance Paid: ₹${advancePaid} (${payMethodStr})\n`;
+  msg += `*Balance Due: ₹${balanceDue}*\n`;
+  msg += `Payment Status: ${(order.paymentStatus || 'pending').toUpperCase()}\n`;
+  msg += `Order Status: ${(order.orderStatus || 'received').toUpperCase()}\n`;
+  msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
+  msg += `Instagram: @aura.frame26`;
+
+  return msg;
+};
+
+/**
+ * Generates clean HTML printable receipt document for Custom Orders
+ */
+export const generateCustomOrderReceiptHTML = (order, settings) => {
+  if (!order) return '';
+  const customerName =
+    order.customerSnapshot?.name || order.customer?.name || order.customerName || 'Walk-in Customer';
+  const orderNum = order.orderNumber || 'AF-CUST';
+  const orderTitle = order.title || 'Custom Order';
+  const businessName =
+    settings?.businessName && !settings.businessName.includes('Muthuvel')
+      ? settings.businessName
+      : 'AuraFrame26';
+  const placedDate = order.orderDate ? formatDate(order.orderDate) : formatDate(order.createdAt || new Date());
+  const deliveryDate = order.deliveryDate ? formatDate(order.deliveryDate) : (order.dueDate ? formatDate(order.dueDate) : '');
+
+  const posterTiers = Array.isArray(order.posterTiers) && order.posterTiers.length > 0
+    ? order.posterTiers
+    : (Array.isArray(order.sizeTiers) ? order.sizeTiers.filter((st) => st.type === 'poster' || (st.posterPrice && Number(st.posterPrice) > 0)) : []);
+
+  const frameTiers = Array.isArray(order.frameTiers) && order.frameTiers.length > 0
+    ? order.frameTiers
+    : (Array.isArray(order.sizeTiers) ? order.sizeTiers.filter((st) => st.type === 'frame' || (st.framePrice && Number(st.framePrice) > 0)) : []);
+
+  const sizeTiers = Array.isArray(order.sizeTiers) && order.sizeTiers.length > 0 ? order.sizeTiers : [];
+
+  let itemsHtml = '';
+
+  if (posterTiers.length > 0) {
+    itemsHtml += `<tr><td colspan="2" style="padding: 8px 0 4px; font-size: 11px; font-weight: 800; color: #d97706; text-transform: uppercase;">🎨 Custom Posters</td></tr>`;
+    posterTiers.forEach((pt) => {
+      const count = Number(pt.count) || 1;
+      const price = Number(pt.price) || Number(pt.posterPrice) || 0;
+      itemsHtml += `
+      <tr style="border-bottom: 1px solid #f1f5f9;">
+        <td style="padding: 8px 0; font-size: 13px; color: #0f172a;">
+          <strong>${pt.size || 'A4'} Poster</strong>
+          <div style="font-size: 11px; color: #64748b;">Qty: ${count} &times; &#8377;${price}</div>
+        </td>
+        <td style="padding: 8px 0; text-align: right; font-weight: 700; font-size: 13px; color: #0f172a; font-family: monospace;">
+          &#8377;${count * price}
+        </td>
+      </tr>`;
+    });
+  }
+
+  if (frameTiers.length > 0) {
+    itemsHtml += `<tr><td colspan="2" style="padding: 12px 0 4px; font-size: 11px; font-weight: 800; color: #d97706; text-transform: uppercase;">🔲 Custom Frames</td></tr>`;
+    frameTiers.forEach((ft) => {
+      const count = Number(ft.count) || 1;
+      const price = Number(ft.price) || Number(ft.framePrice) || 0;
+      itemsHtml += `
+      <tr style="border-bottom: 1px solid #f1f5f9;">
+        <td style="padding: 8px 0; font-size: 13px; color: #0f172a;">
+          <strong>${ft.size || 'A4'} Frame</strong>
+          <div style="font-size: 11px; color: #64748b;">Qty: ${count} &times; &#8377;${price}</div>
+        </td>
+        <td style="padding: 8px 0; text-align: right; font-weight: 700; font-size: 13px; color: #0f172a; font-family: monospace;">
+          &#8377;${count * price}
+        </td>
+      </tr>`;
+    });
+  }
+
+  if (posterTiers.length === 0 && frameTiers.length === 0 && sizeTiers.length > 0) {
+    itemsHtml += `<tr><td colspan="2" style="padding: 8px 0 4px; font-size: 11px; font-weight: 800; color: #d97706; text-transform: uppercase;">Specifications</td></tr>`;
+    sizeTiers.forEach((st) => {
+      const count = Number(st.count) || 1;
+      const price = Number(st.unitPrice) || Number(st.price) || 0;
+      itemsHtml += `
+      <tr style="border-bottom: 1px solid #f1f5f9;">
+        <td style="padding: 8px 0; font-size: 13px; color: #0f172a;">
+          <strong>${st.size || 'A4'}</strong>
+          <div style="font-size: 11px; color: #64748b;">Qty: ${count} &times; &#8377;${price}</div>
+        </td>
+        <td style="padding: 8px 0; text-align: right; font-weight: 700; font-size: 13px; color: #0f172a; font-family: monospace;">
+          &#8377;${count * price}
+        </td>
+      </tr>`;
+    });
+  }
+
+  const totalPrice = Number(order.pricing?.totalPrice) || 0;
+  const advancePaid = Number(order.pricing?.advancePaid) || 0;
+  const balanceDue = Number(order.pricing?.balanceDue) || Math.max(0, totalPrice - advancePaid);
+  const paymentMethodStr = (order.paymentMethod || 'upi').toUpperCase();
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Custom Order #${orderNum} - ${businessName}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #ffffff;
+      color: #0f172a;
+      display: flex;
+      justify-content: center;
+      padding: 24px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .receipt-card {
+      width: 100%;
+      max-width: 440px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 28px 24px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+    }
+    .header { text-align: center; margin-bottom: 16px; }
+    .brand-title { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; color: #0f172a; }
+    .brand-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
+    .divider { border: 0; border-top: 1px dashed #cbd5e1; margin: 16px 0; }
+    .meta-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; font-size: 11px; margin-bottom: 14px; }
+    .meta-label { color: #94a3b8; font-size: 10px; text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em; }
+    .meta-val { font-weight: 700; color: #0f172a; font-size: 12px; margin-top: 2px; }
+    .delivery-box {
+      background: #fefce8;
+      border: 1px solid #fef08a;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 11px;
+      color: #854d0e;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+    .notes-box {
+      background: #f8fafc;
+      border-left: 3px solid #f59e0b;
+      padding: 8px 12px;
+      font-size: 11px;
+      color: #475569;
+      font-style: italic;
+      margin-bottom: 16px;
+      border-radius: 0 8px 8px 0;
+    }
+    .total-box {
+      background: #f8fafc;
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+    .total-row { display: flex; justify-content: space-between; font-size: 12px; color: #64748b; margin-bottom: 6px; }
+    .grand-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 16px;
+      font-weight: 800;
+      color: #0f172a;
+      padding-top: 8px;
+      border-top: 1px solid #e2e8f0;
+    }
+    .due-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 800;
+      color: ${balanceDue > 0 ? '#e11d48' : '#059669'};
+      padding-top: 6px;
+    }
+    .status-pill {
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      color: #059669;
+      padding: 8px 12px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .footer-msg {
+      text-align: center;
+      background: #fffbeb;
+      border: 1px solid #fef3c7;
+      border-radius: 14px;
+      padding: 12px;
+      font-size: 11.5px;
+      color: #92400e;
+      line-height: 1.5;
+    }
+    .footer-tag {
+      font-weight: 700;
+      color: #b45309;
+      margin-top: 4px;
+      display: block;
+    }
+    @media print {
+      body { padding: 0; }
+      .receipt-card { border: none; box-shadow: none; max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="receipt-card">
+    <div class="header">
+      <div class="brand-title">${businessName}</div>
+      <div class="brand-sub">Posters &middot; Framing &middot; Art Decor</div>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="meta-grid">
+      <div>
+        <div class="meta-label">Custom Order</div>
+        <div class="meta-val">#${orderNum}</div>
+      </div>
+      <div style="text-align: center;">
+        <div class="meta-label">Placed</div>
+        <div class="meta-val">${placedDate}</div>
+      </div>
+      <div style="text-align: right;">
+        <div class="meta-label">Customer</div>
+        <div class="meta-val">${customerName}</div>
+      </div>
+    </div>
+
+    ${
+      deliveryDate
+        ? `<div class="delivery-box">
+            <span>&#128666; Expected Delivery</span>
+            <strong>${deliveryDate}</strong>
+          </div>`
+        : ''
+    }
+
+    <table>
+      <thead>
+        <tr style="border-bottom: 1px solid #e2e8f0;">
+          <th style="padding-bottom: 6px; text-align: left; font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Specifications</th>
+          <th style="padding-bottom: 6px; text-align: right; font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${itemsHtml}
+      </tbody>
+    </table>
+
+    ${order.customNotes ? `<div class="notes-box">"${order.customNotes}"</div>` : ''}
+
+    <div class="total-box">
+      <div class="total-row">
+        <span>Total Quoted</span>
+        <span style="font-family: monospace; font-weight: 700; color: #0f172a;">&#8377;${totalPrice}</span>
+      </div>
+      <div class="total-row">
+        <span>Advance Paid (${paymentMethodStr})</span>
+        <span style="font-family: monospace; color: #059669;">&#8377;${advancePaid}</span>
+      </div>
+      <div class="due-row">
+        <span>${balanceDue > 0 ? 'Balance Due on Pickup' : 'Status'}</span>
+        <span style="font-family: monospace;">${balanceDue > 0 ? '&#8377;' + balanceDue : 'Paid in Full ✓'}</span>
+      </div>
+    </div>
+
+    <div class="status-pill">
+      <span>Order Status: ${(order.orderStatus || 'received').toUpperCase().replace('_', ' ')}</span>
+      <span>${order.customerSnapshot?.phone || order.customer?.phone || ''}</span>
+    </div>
+
+    <div class="footer-msg">
+      <div>Thank you, <strong>${customerName}</strong>! &#128155;</div>
+      <div>Hope your walls glow with your custom prints! &#10024;</div>
+      <span class="footer-tag">Tag us @aura.frame26 when you put them up &#128248;</span>
+    </div>
+  </div>
+</body>
+</html>`;
+};
+
 
 

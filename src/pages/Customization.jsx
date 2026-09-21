@@ -18,13 +18,16 @@ import {
   Phone,
   RefreshCw,
   Eye,
+  FileText,
+  Share2,
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { CustomOrderModal } from '../components/CustomOrderModal';
+import { CustomOrderReceiptModal } from '../components/CustomOrderReceiptModal';
 import { formatCurrency, formatDateTime, generateCustomOrderWhatsAppReceiptUrl } from '../utils/formatters';
 import { api } from '../api/client';
 
-export const Customization = ({ onNavigate }) => {
+export const Customization = ({ onNavigate, settings }) => {
   const { showToast } = useToast();
 
   const [orders, setOrders] = useState([]);
@@ -42,6 +45,7 @@ export const Customization = ({ onNavigate }) => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
+  const [receiptOrder, setReceiptOrder] = useState(null);
 
   useEffect(() => {
     fetchOrdersAndStats();
@@ -101,8 +105,11 @@ export const Customization = ({ onNavigate }) => {
     setIsModalOpen(true);
   };
 
-  const handleSaveSuccess = () => {
+  const handleSaveSuccess = (savedOrder) => {
     fetchOrdersAndStats();
+    if (savedOrder) {
+      setReceiptOrder(savedOrder);
+    }
   };
 
   const handleAdvanceStatus = async (order) => {
@@ -149,7 +156,7 @@ export const Customization = ({ onNavigate }) => {
   };
 
   const handleOpenWhatsApp = (order) => {
-    const waUrl = generateCustomOrderWhatsAppReceiptUrl(order);
+    const waUrl = generateCustomOrderWhatsAppReceiptUrl(order, settings);
     if (!waUrl) {
       showToast('No phone number recorded for customer', 'error');
       return;
@@ -220,6 +227,14 @@ export const Customization = ({ onNavigate }) => {
         onClose={() => setIsModalOpen(false)}
         order={editingOrder}
         onSaveSuccess={handleSaveSuccess}
+      />
+
+      {/* Custom Order Digital/PDF Receipt Modal */}
+      <CustomOrderReceiptModal
+        isOpen={Boolean(receiptOrder)}
+        onClose={() => setReceiptOrder(null)}
+        order={receiptOrder}
+        settings={settings}
       />
 
       {/* Top Header */}
@@ -577,14 +592,26 @@ export const Customization = ({ onNavigate }) => {
                   {/* Right Column: Pricing Summary Card */}
                   <div className="text-left sm:text-right shrink-0 space-y-1 border-t sm:border-t-0 pt-2 sm:pt-0 w-full sm:w-auto bg-zinc-950/60 sm:bg-transparent p-3 sm:p-0 rounded-2xl border sm:border-0 border-zinc-800/60">
                     <div>
-                      <span className="text-[10px] uppercase font-bold text-zinc-500 block">Total Quoted</span>
+                      <span className="text-[10px] uppercase font-bold text-zinc-500 block">Total Price</span>
                       <div className="text-lg sm:text-xl font-black text-amber-300">
                         {formatCurrency(order?.pricing?.totalPrice || 0)}
                       </div>
                     </div>
 
-                    <div className="text-xs text-emerald-400 font-semibold">
-                      Advance: {formatCurrency(order?.pricing?.advancePaid || 0)}
+                    {(order?.pricing?.costPrice > 0 || order?.pricing?.profit > 0) && (
+                      <div className="text-[10.5px] font-semibold text-zinc-400">
+                        <span>Cost: ₹{order?.pricing?.costPrice || 0}</span>
+                        <span className="text-emerald-400 font-bold ml-1">
+                          (Profit: ₹{order?.pricing?.profit || Math.max(0, (order?.pricing?.totalPrice || 0) - (order?.pricing?.costPrice || 0))})
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-1 sm:justify-end text-xs text-emerald-400 font-semibold">
+                      <span>Adv: {formatCurrency(order?.pricing?.advancePaid || 0)}</span>
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-zinc-800 text-zinc-300 uppercase">
+                        {order?.paymentMethod === 'cash' ? '💵 Cash' : '📱 UPI'}
+                      </span>
                     </div>
 
                     <div
@@ -599,10 +626,31 @@ export const Customization = ({ onNavigate }) => {
                 {/* Row 3: Action Buttons */}
                 <div className="flex items-center justify-between gap-2 pt-2 border-t border-zinc-800/60">
                   <div className="flex items-center gap-1.5">
+                    {/* View & Share PDF Receipt */}
+                    <button
+                      type="button"
+                      onClick={() => setReceiptOrder(order)}
+                      className="px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-amber-400 hover:text-amber-300 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer border border-amber-500/30 shadow-sm"
+                      title="View & Share PDF Receipt"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Receipt</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenWhatsApp(order)}
+                      className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-[#22c55e] font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer border border-zinc-800"
+                      title="Share on WhatsApp"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">WhatsApp</span>
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => handleOpenEditModal(order)}
-                      className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer border border-zinc-800"
+                      className="p-1.5 sm:p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer border border-zinc-800"
                       title="Edit specifications"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
@@ -610,7 +658,7 @@ export const Customization = ({ onNavigate }) => {
                     <button
                       type="button"
                       onClick={() => handleDelete(order)}
-                      className="p-2 rounded-xl bg-zinc-900 hover:bg-rose-950/60 text-zinc-500 hover:text-rose-400 transition-colors cursor-pointer border border-zinc-800"
+                      className="p-1.5 sm:p-2 rounded-xl bg-zinc-900 hover:bg-rose-950/60 text-zinc-500 hover:text-rose-400 transition-colors cursor-pointer border border-zinc-800"
                       title="Delete order"
                     >
                       <Trash2 className="w-3.5 h-3.5" />

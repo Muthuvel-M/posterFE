@@ -3,20 +3,20 @@ import {
   ArrowLeft,
   FileText,
   MessageCircle,
-  Copy,
-  Check,
   Share2,
+  Download,
+  Check,
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 import { useModalAnimation } from '../hooks/useModalAnimation';
-import { generateWhatsAppReceiptUrl, formatCurrency, formatDateTime } from '../utils/formatters';
+import { shareReceiptOnWhatsApp, directPrintReceipt } from '../utils/pdfReceiptGenerator';
 import logoImg from '../assets/2.png';
 
 export const ReceiptModal = ({ settings }) => {
   const { completedSale, isReceiptModalOpen, closeReceiptModal } = useCart();
   const { showToast } = useToast();
-  const [copied, setCopied] = useState(false);
+  const [sharing, setSharing] = useState(false);
 
   const { shouldRender, isClosing, requestClose } = useModalAnimation(
     isReceiptModalOpen,
@@ -25,12 +25,21 @@ export const ReceiptModal = ({ settings }) => {
 
   if (!shouldRender || !completedSale) return null;
 
-  const businessName = settings?.businessName || 'AuraFrame';
+  const businessName = settings?.businessName && !settings.businessName.includes('Muthuvel')
+    ? settings.businessName
+    : 'AuraFrame26';
   const saleNumber = completedSale.saleNumber || 'INV-0001';
   const customerName =
     completedSale.customerSnapshot?.name ||
     completedSale.customer?.name ||
-    'Friend';
+    completedSale.customerName ||
+    'Walk-in Customer';
+  const customerPhone =
+    completedSale.customerSnapshot?.phone ||
+    completedSale.customer?.phone ||
+    completedSale.phone ||
+    completedSale.customerPhone ||
+    '';
 
   const saleDate = completedSale.createdAt
     ? new Date(completedSale.createdAt)
@@ -52,53 +61,35 @@ export const ReceiptModal = ({ settings }) => {
 
   const paymentMethodStr = completedSale.paymentMethod?.toUpperCase() || 'UPI';
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    await directPrintReceipt('printable-receipt', showToast);
   };
 
-  const handleWhatsAppShare = () => {
-    const url = generateWhatsAppReceiptUrl(completedSale, settings);
-    if (url) {
-      window.open(url, '_blank');
-    }
-  };
-
-  const handleCopyText = async () => {
+  const handleWhatsAppSharePDF = async () => {
     try {
-      let msg = `Thank you, ${customerName}! 💛\n`;
-      msg += `Your AuraFrame order is confirmed, and your receipt is attached. 🧾\n`;
-      msg += `Hope your walls glow with your new posters! ✨\n`;
-      msg += `Tag us @aura.frame26 when you put them up 📸\n\n`;
-      msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
-      msg += `🧾 RECEIPT #${saleNumber}\n`;
-      msg += `📅 Date: ${dateStr} at ${timeStr}\n\n`;
-      msg += `Items:\n`;
-      (completedSale.items || []).forEach((item) => {
-        msg += `• ${item.name} (${item.size || 'Standard'}) × ${item.qty} — ₹${item.qty * item.sellPrice}\n`;
+      setSharing(true);
+      await shareReceiptOnWhatsApp({
+        elementId: 'printable-receipt',
+        orderNumber: saleNumber,
+        customerPhone,
+        customerName,
+        isCustom: false,
+        showToast,
       });
-      msg += `─────────────────────\n`;
-      msg += `Total Paid: ₹${completedSale.total} (${paymentMethodStr})\n`;
-      msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
-      msg += `Instagram: @aura.frame26`;
-
-      await navigator.clipboard.writeText(msg);
-      setCopied(true);
-      showToast('Receipt message copied to clipboard', 'success');
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      showToast('Failed to copy', 'error');
+    } finally {
+      setSharing(false);
     }
   };
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/85 backdrop-blur-md no-print overflow-hidden ${
+      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/85 backdrop-blur-md print-modal-overlay overflow-hidden ${
         isClosing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop-in'
       }`}
       onClick={requestClose}
     >
       <div
-        className={`w-full max-w-md rounded-t-[32px] sm:rounded-[32px] bg-[#fafaf9] text-zinc-900 shadow-2xl overflow-hidden flex flex-col max-h-[94vh] ${
+        className={`w-full max-w-md rounded-t-[32px] sm:rounded-[32px] bg-[#fafaf9] text-zinc-900 shadow-2xl overflow-hidden flex flex-col max-h-[94vh] print-modal-container ${
           isClosing ? 'animate-modal-slide-down' : 'animate-modal-slide-up'
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -116,12 +107,11 @@ export const ReceiptModal = ({ settings }) => {
           <h2 className="text-base font-bold text-zinc-900">Digital Receipt</h2>
 
           <button
-            onClick={handlePrint}
-            className="px-3 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border border-zinc-200"
-            title="Save or Print PDF"
+            onClick={requestClose}
+            className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-500 hover:text-zinc-800 flex items-center justify-center transition-colors cursor-pointer"
+            title="Close"
           >
-            <FileText className="w-3.5 h-3.5" />
-            <span>Save PDF</span>
+            <span className="text-lg leading-none font-medium">&times;</span>
           </button>
         </div>
 
@@ -252,35 +242,26 @@ export const ReceiptModal = ({ settings }) => {
         </div>
 
         {/* Bottom Actions Bar */}
-        <div className="p-4 pt-3 border-t border-zinc-200/70 bg-white grid grid-cols-3 gap-2 no-print">
-          {/* WhatsApp Button */}
+        <div className="p-4 pt-3 border-t border-zinc-200/70 bg-white flex items-center gap-2.5 no-print">
+          {/* WhatsApp Share PDF Button */}
           <button
-            onClick={handleWhatsAppShare}
-            className="py-3 px-3 rounded-2xl bg-[#22c55e] hover:bg-[#16a34a] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer col-span-1"
-            title="Send on WhatsApp"
+            onClick={handleWhatsAppSharePDF}
+            disabled={sharing}
+            className="flex-1 py-3 px-4 rounded-2xl bg-[#22c55e] hover:bg-[#16a34a] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-green-600/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+            title="Share PDF Receipt on WhatsApp"
           >
             <MessageCircle className="w-4 h-4 fill-white/20 shrink-0" />
-            <span>WhatsApp</span>
-          </button>
-
-          {/* Copy Text Button */}
-          <button
-            onClick={handleCopyText}
-            className="py-3 px-3 rounded-2xl bg-zinc-100 hover:bg-zinc-200 text-zinc-800 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer border border-zinc-200 col-span-1"
-            title="Copy Receipt Message"
-          >
-            {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-zinc-600" />}
-            <span>{copied ? 'Copied' : 'Copy Text'}</span>
+            <span>{sharing ? 'Generating PDF...' : 'WhatsApp Share PDF'}</span>
           </button>
 
           {/* Save / Print PDF */}
           <button
             onClick={handlePrint}
-            className="py-3 px-3 rounded-2xl bg-[#18181b] hover:bg-[#27272a] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer col-span-1"
+            className="py-3 px-4 rounded-2xl bg-[#18181b] hover:bg-[#27272a] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-all cursor-pointer border border-zinc-800 shrink-0"
             title="Save PDF / Print"
           >
             <FileText className="w-4 h-4 shrink-0" />
-            <span>Save PDF</span>
+            <span>Print PDF</span>
           </button>
         </div>
       </div>

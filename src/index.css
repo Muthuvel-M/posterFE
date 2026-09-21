@@ -59,7 +59,7 @@
 /* Print & PDF Receipt Styles */
 @media print {
   @page {
-    margin: 10mm;
+    margin: 8mm;
     size: auto;
   }
   html, body {
@@ -68,24 +68,67 @@
     font-size: 12pt;
     margin: 0 !important;
     padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
-  .no-print {
+  
+  /* Hide the entire app background screen, main container, navbar, and background elements */
+  #root > main,
+  #root > header,
+  #root > nav,
+  .no-print,
+  nav,
+  header,
+  main,
+  aside {
     display: none !important;
   }
-  #printable-receipt {
+
+  /* Make modal print wrapper take over page without dark backdrop */
+  .print-modal-overlay {
+    position: static !important;
+    display: block !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .print-modal-container {
+    position: static !important;
+    display: block !important;
+    background: white !important;
+    box-shadow: none !important;
+    border: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  #printable-receipt,
+  #printable-custom-receipt {
     display: block !important;
     visibility: visible !important;
+    position: relative !important;
     width: 100% !important;
-    max-width: 480px !important;
+    max-width: 440px !important;
     margin: 0 auto !important;
-    padding: 16px !important;
+    padding: 20px !important;
     border: 1px solid #e5e7eb !important;
-    border-radius: 12px !important;
+    border-radius: 16px !important;
     background: white !important;
     color: #111827 !important;
     box-shadow: none !important;
+    overflow: visible !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 }
 

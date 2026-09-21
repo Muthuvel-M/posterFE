@@ -20,6 +20,7 @@ const Customers = lazy(() => import('./pages/Customers').then(m => ({ default: m
 const SalesHistory = lazy(() => import('./pages/SalesHistory').then(m => ({ default: m.SalesHistory })));
 const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
 const Customization = lazy(() => import('./pages/Customization').then(m => ({ default: m.Customization })));
+const Expenses = lazy(() => import('./pages/Expenses').then(m => ({ default: m.Expenses })));
 
 // Lazy load conditional dialogs
 const InstantQRModal = lazy(() => import('./components/InstantQRModal').then(m => ({ default: m.InstantQRModal })));
@@ -135,7 +136,15 @@ const MainLayout = () => {
             )}
             {activeTab === 'customization' && (
               <Suspense fallback={<PageLoadingFallback />}>
-                <Customization onNavigate={(tab) => setActiveTab(tab)} />
+                <Customization
+                  settings={settings}
+                  onNavigate={(tab) => setActiveTab(tab)}
+                />
+              </Suspense>
+            )}
+            {activeTab === 'expenses' && (
+              <Suspense fallback={<PageLoadingFallback />}>
+                <Expenses onNavigate={(tab) => setActiveTab(tab)} />
               </Suspense>
             )}
           </div>

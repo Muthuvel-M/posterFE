@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { X, Layers, Plus, CheckCircle2, IndianRupee, Sparkles, Box } from 'lucide-react';
+import { X, Layers, Plus, CheckCircle2, IndianRupee, Sparkles, Box, Banknote, QrCode } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { useModalAnimation } from '../hooks/useModalAnimation';
 import { formatCurrency } from '../utils/formatters';
+import { api } from '../api/client';
 
 export const RawMaterialModal = ({ isOpen, onClose, onSaveSuccess }) => {
   const { showToast } = useToast();
@@ -12,6 +13,7 @@ export const RawMaterialModal = ({ isOpen, onClose, onSaveSuccess }) => {
   const [size, setSize] = useState('A4');
   const [count, setCount] = useState(50);
   const [cost, setCost] = useState(500);
+  const [paymentMethod, setPaymentMethod] = useState('cash'); // 'cash' | 'upi'
   const [supplier, setSupplier] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -32,6 +34,26 @@ export const RawMaterialModal = ({ isOpen, onClose, onSaveSuccess }) => {
 
     try {
       setSubmitting(true);
+      const title = `${count}x ${size} ${category === 'poster' ? 'Poster Paper' : 'Frame Moulding'}`;
+
+      // Save to backend expense collection
+      await api.createExpense({
+        title,
+        category: 'raw_material',
+        amount: Number(cost),
+        paymentMethod,
+        vendor: supplier.trim(),
+        isRawMaterial: true,
+        rawMaterialDetails: {
+          category,
+          size,
+          count: Number(count),
+          unitCost: Number(unitCost),
+        },
+      }).catch((err) => {
+        console.warn('Backend expense creation warning:', err);
+      });
+
       const intakeEntry = {
         id: 'RM-' + Date.now(),
         category,
@@ -39,6 +61,7 @@ export const RawMaterialModal = ({ isOpen, onClose, onSaveSuccess }) => {
         count: Number(count),
         cost: Number(cost),
         unitCost: Number(unitCost),
+        paymentMethod,
         supplier: supplier.trim(),
         createdAt: new Date().toISOString(),
       };
@@ -191,6 +214,40 @@ export const RawMaterialModal = ({ isOpen, onClose, onSaveSuccess }) => {
             <span className="font-mono font-bold text-amber-300">
               ₹{unitCost} / {category === 'poster' ? 'sheet' : 'piece'}
             </span>
+          </div>
+
+          {/* Payment Method Switcher */}
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
+              Payment Outflow Mode *
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('cash')}
+                className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  paymentMethod === 'cash'
+                    ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300 shadow-sm'
+                    : 'bg-[#1c1c22] border-zinc-800 text-zinc-400 hover:text-white'
+                }`}
+              >
+                <Banknote className="w-3.5 h-3.5" />
+                <span>💵 Cash Out</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('upi')}
+                className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  paymentMethod === 'upi'
+                    ? 'bg-amber-950/80 border-amber-500 text-amber-300 shadow-sm'
+                    : 'bg-[#1c1c22] border-zinc-800 text-zinc-400 hover:text-white'
+                }`}
+              >
+                <QrCode className="w-3.5 h-3.5" />
+                <span>📱 UPI / Online</span>
+              </button>
+            </div>
           </div>
 
           {/* Supplier / Notes (Optional) */}

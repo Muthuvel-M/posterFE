@@ -13,6 +13,8 @@ import {
   Calendar,
   Box,
   Palette,
+  Banknote,
+  TrendingDown,
 } from 'lucide-react';
 import { InstagramIcon } from '../components/InstagramIcon';
 import { useCatalog } from '../context/CatalogContext';
@@ -30,6 +32,20 @@ export const HomeBento = ({
 }) => {
   const { products, todaySummary, recentSales, isSyncing, refreshCatalog } = useCatalog();
   const [customStats, setCustomStats] = useState({ total: 0, inProduction: 0, readyForPickup: 0 });
+  const [cashInHand, setCashInHand] = useState(0);
+
+  useEffect(() => {
+    api.getDashboardCounts().then((res) => {
+      if (res?.success && res.data) {
+        if (res.data.cashFlow?.cashInHand !== undefined) {
+          setCashInHand(res.data.cashFlow.cashInHand);
+        }
+        if (res.data.customOrders) {
+          setCustomStats(res.data.customOrders);
+        }
+      }
+    }).catch(() => {});
+  }, [isSyncing]);
 
   // Dynamic time-based greeting
   const getGreeting = () => {
@@ -42,7 +58,7 @@ export const HomeBento = ({
   const activeProductsCount = products.length;
   const lowStockCount = products.filter((p) => (p.stock || 0) <= (p.lowStockThreshold ?? 10)).length;
 
-  const userName = user?.name || 'Muthuvel M';
+  const userName = user?.name && !user.name.includes('Muthuvel') ? user.name : 'AuraFrame26';
 
   return (
     <div className="max-w-xl mx-auto px-4 sm:px-6 py-5 pb-32 space-y-6 text-white">
@@ -192,10 +208,39 @@ export const HomeBento = ({
           </div>
         </div>
 
-        {/* Wide Card 2: INSTANT UPI QR */}
+        {/* Wide Card 2: EXPENSES & IN-HAND CASH */}
+        <div
+          onClick={() => onNavigate('expenses')}
+          className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-[#881337] via-[#9f1239] to-[#be123c] hover:from-[#9f1239] hover:to-[#e11d48] text-white flex items-center justify-between gap-3 cursor-pointer shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all group animate-card-in stagger-8"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-black/30 text-rose-300 flex items-center justify-center font-bold shrink-0 shadow-sm">
+              <Banknote className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs sm:text-sm font-black tracking-tight text-white">
+                  EXPENSES & CASH DRAWER
+                </h3>
+                <span className="px-1.5 py-0.5 rounded-full text-[8.5px] font-extrabold uppercase bg-white/20 text-white border border-white/30">
+                  {formatCurrency(cashInHand)} CASH
+                </span>
+              </div>
+              <p className="text-[11px] text-white/80 mt-0.5 line-clamp-1">
+                Track store expenses, rent, supplies & live in-hand cash
+              </p>
+            </div>
+          </div>
+
+          <div className="w-7 h-7 rounded-full bg-black/20 group-hover:bg-black/30 flex items-center justify-center text-white shrink-0 transition-colors">
+            <ArrowRight className="w-3.5 h-3.5" />
+          </div>
+        </div>
+
+        {/* Wide Card 3: INSTANT UPI QR */}
         <div
           onClick={onOpenInstantQR}
-          className="p-3 sm:p-3.5 rounded-2xl bg-zinc-900/95 hover:bg-zinc-900 border border-zinc-800/80 flex items-center justify-between gap-3 cursor-pointer shadow-md hover:border-zinc-700 transition-all group animate-card-in stagger-8"
+          className="p-3 sm:p-3.5 rounded-2xl bg-zinc-900/95 hover:bg-zinc-900 border border-zinc-800/80 flex items-center justify-between gap-3 cursor-pointer shadow-md hover:border-zinc-700 transition-all group animate-card-in stagger-9"
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-400 to-yellow-300 text-zinc-950 flex items-center justify-center font-bold shrink-0 shadow-sm">
@@ -333,28 +378,51 @@ export const HomeBento = ({
         </div>
       </div>
 
-      {/* Section: REVENUE OVERVIEW */}
+      {/* Section: REVENUE & CASH OVERVIEW */}
       <div className="space-y-2 animate-card-in stagger-11">
-        <h2 className="text-[11px] font-black uppercase tracking-wider text-zinc-400">
-          REVENUE OVERVIEW
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-[11px] font-black uppercase tracking-wider text-zinc-400">
+            BUSINESS OVERVIEW
+          </h2>
+          <button
+            onClick={() => onNavigate('expenses')}
+            className="text-[11px] font-bold text-rose-400 hover:text-rose-300 flex items-center gap-0.5 transition-colors cursor-pointer"
+          >
+            <span>Expenses</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
 
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800/80 grid grid-cols-3 gap-2 text-center shadow-md">
-          <div className="p-2 rounded-xl bg-zinc-950/60 border border-zinc-800/60">
-            <span className="text-[9.5px] uppercase font-bold text-zinc-400 block">Today</span>
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800/80 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center shadow-md">
+          {/* 1. Today's Revenue */}
+          <div className="p-2.5 rounded-xl bg-zinc-950/60 border border-zinc-800/60">
+            <span className="text-[9.5px] uppercase font-bold text-zinc-400 block">Today Rev</span>
             <div className="text-sm sm:text-base font-black text-amber-300 mt-0.5">
               {formatCurrency(todaySummary.revenue)}
             </div>
           </div>
 
-          <div className="p-2 rounded-xl bg-zinc-950/60 border border-zinc-800/60">
+          {/* 2. Today's Profit */}
+          <div className="p-2.5 rounded-xl bg-zinc-950/60 border border-zinc-800/60">
             <span className="text-[9.5px] uppercase font-bold text-zinc-400 block">Profit</span>
             <div className="text-sm sm:text-base font-black text-emerald-400 mt-0.5">
               {formatCurrency(todaySummary.profit)}
             </div>
           </div>
 
-          <div className="p-2 rounded-xl bg-zinc-950/60 border border-zinc-800/60">
+          {/* 3. In-Hand Cash */}
+          <div
+            onClick={() => onNavigate('expenses')}
+            className="p-2.5 rounded-xl bg-zinc-950/60 hover:bg-zinc-800/60 border border-amber-500/30 cursor-pointer transition-colors"
+          >
+            <span className="text-[9.5px] uppercase font-bold text-amber-400 block">In-Hand Cash</span>
+            <div className="text-sm sm:text-base font-black text-white mt-0.5">
+              {formatCurrency(cashInHand)}
+            </div>
+          </div>
+
+          {/* 4. Orders Count */}
+          <div className="p-2.5 rounded-xl bg-zinc-950/60 border border-zinc-800/60">
             <span className="text-[9.5px] uppercase font-bold text-zinc-400 block">Orders</span>
             <div className="text-sm sm:text-base font-black text-white mt-0.5">
               {todaySummary.count}
