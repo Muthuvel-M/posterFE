@@ -99,12 +99,30 @@ export const CustomOrderReceiptModal = ({ isOpen, onClose, order, settings }) =>
   const handleWhatsAppSharePDF = async () => {
     try {
       setSharing(true);
+      const combinedTiers =
+        posterTiersList.length > 0 || frameTiersList.length > 0
+          ? [
+              ...posterTiersList.map((p) => ({ ...p, type: 'poster' })),
+              ...frameTiersList.map((f) => ({ ...f, type: 'frame' })),
+            ]
+          : genericTiers;
+
       await shareReceiptOnWhatsApp({
         elementId: 'printable-custom-receipt',
         orderNumber,
         customerPhone,
         customerName,
+        customerInstagram,
+        dateStr: placedDate,
+        timeStr,
+        sizeTiers: combinedTiers,
+        total: totalPrice,
+        advancePaid,
+        balanceDue,
+        paymentMethod: paymentMethodStr,
         isCustom: true,
+        deliveryDate,
+        customNotes: order.customNotes || '',
         showToast,
       });
     } finally {
@@ -148,7 +166,7 @@ export const CustomOrderReceiptModal = ({ isOpen, onClose, order, settings }) =>
 
         {/* Scrollable Printable Receipt Card */}
         <div
-          className="p-6 overflow-y-auto space-y-4 no-scrollbar flex-1 print-card bg-white"
+          className="p-6 pb-8 overflow-y-auto space-y-4 no-scrollbar flex-1 print-card bg-white"
           id="printable-custom-receipt"
         >
           {/* Store Logo & Title */}
@@ -169,31 +187,31 @@ export const CustomOrderReceiptModal = ({ isOpen, onClose, order, settings }) =>
             ••••••••••••••••••••••••••••••••••••
           </div>
 
-          {/* 3-Column Metadata Row */}
-          <div className="grid grid-cols-3 gap-2 text-xs">
-            <div>
-              <span className="text-[10px] text-zinc-400 font-semibold uppercase block">
-                Receipt
+          {/* Metadata Row */}
+          <div className="flex items-start justify-between gap-2 text-xs bg-zinc-50/90 p-3.5 rounded-2xl border border-zinc-100">
+            <div className="min-w-0">
+              <span className="text-[9.5px] text-zinc-400 font-bold uppercase tracking-wider block">
+                RECEIPT
               </span>
               <span className="font-bold text-xs sm:text-sm text-zinc-900 block mt-0.5 font-mono">
-                {orderNumber}
+                #{orderNumber}
               </span>
             </div>
 
-            <div className="text-center">
-              <span className="text-[10px] text-zinc-400 font-semibold uppercase block">
-                Placed Date
+            <div className="text-center shrink-0 px-2">
+              <span className="text-[9.5px] text-zinc-400 font-bold uppercase tracking-wider block">
+                PLACED DATE
               </span>
-              <span className="font-bold text-xs sm:text-sm text-zinc-900 block mt-0.5">
+              <span className="font-bold text-xs sm:text-sm text-zinc-800 block mt-0.5 whitespace-nowrap">
                 {placedDate}
               </span>
             </div>
 
-            <div className="text-right">
-              <span className="text-[10px] text-zinc-400 font-semibold uppercase block">
-                Customer
+            <div className="text-right min-w-0 max-w-[45%]">
+              <span className="text-[9.5px] text-zinc-400 font-bold uppercase tracking-wider block">
+                CUSTOMER
               </span>
-              <span className="font-bold text-xs sm:text-sm text-zinc-900 block mt-0.5 truncate">
+              <span className="font-bold text-xs sm:text-sm text-zinc-900 block mt-0.5 leading-snug break-words">
                 {customerName}
               </span>
             </div>
@@ -369,15 +387,15 @@ export const CustomOrderReceiptModal = ({ isOpen, onClose, order, settings }) =>
           </div>
 
           {/* Custom Brand Glow & Tag Note Banner */}
-          <div className="p-3.5 rounded-2xl bg-[#fffbeb] border border-[#fef3c7] text-[#92400e] text-center space-y-1">
+          <div className="p-4 rounded-2xl bg-[#fffbeb] border border-[#fef3c7] text-[#92400e] text-center space-y-1.5 mt-2">
             <p className="font-bold text-xs">Thank you, {customerName}! 💛</p>
-            <p className="text-[11px] leading-relaxed">
+            <p className="text-[11px] leading-relaxed text-amber-900">
               Your AuraFrame order is confirmed, and your receipt is attached. 🧾
             </p>
-            <p className="text-[11px]">
+            <p className="text-[11px] text-amber-800">
               Hope your walls glow with your new posters! ✨
             </p>
-            <p className="text-[11px] font-bold text-[#b45309] pt-0.5">
+            <p className="text-[11px] font-bold text-[#b45309] pt-1">
               Tag us @aura.frame26 when you put them up 📸
             </p>
           </div>
