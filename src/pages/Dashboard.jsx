@@ -15,12 +15,15 @@ import {
   TrendingUp,
   MessageCircle,
   Sparkles,
+  PieChart,
+  AlertCircle,
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { formatCurrency } from '../utils/formatters';
 import { api } from '../api/client';
+import { ALLOCATION_KEYS, ALLOCATION_LABELS } from '../utils/incomeSplit';
 
-export const Dashboard = ({ onOpenReceipt }) => {
+export const Dashboard = ({ onOpenReceipt, onNavigate }) => {
   const { showToast } = useToast();
 
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'behavior'
@@ -34,9 +37,16 @@ export const Dashboard = ({ onOpenReceipt }) => {
   });
   const [loading, setLoading] = useState(false);
   const [showProfit, setShowProfit] = useState(false);
+  const [incomeSplitLatest, setIncomeSplitLatest] = useState(null);
 
   useEffect(() => {
     fetchAnalytics();
+    api
+      .getIncomeSplitLatest()
+      .then((res) => {
+        if (res?.success) setIncomeSplitLatest(res.data);
+      })
+      .catch(() => {});
   }, []);
 
   const fetchAnalytics = async () => {
@@ -140,6 +150,81 @@ export const Dashboard = ({ onOpenReceipt }) => {
                 <span className="text-rose-400 font-bold">-{formatCurrency(cashFlow.lifetimeCashOutflow)} out</span>
               </div>
             </div>
+          </div>
+
+          {/* Weekend income split snapshot */}
+          <div className="p-5 rounded-[28px] bg-[#151518] border border-zinc-800 space-y-3 shadow-lg animate-card-in stagger-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <PieChart className="w-3.5 h-3.5 text-amber-400" />
+                <span className="text-zinc-400 uppercase text-[10px] font-black tracking-widest">
+                  Weekend income split
+                </span>
+              </div>
+              {onNavigate && (
+                <button
+                  type="button"
+                  onClick={() => onNavigate('income-splits')}
+                  className="text-[10px] font-bold text-amber-400 hover:text-amber-300 cursor-pointer"
+                >
+                  Open
+                </button>
+              )}
+            </div>
+
+            {incomeSplitLatest?.pendingSettle ? (
+              <div className="flex items-start gap-2 p-3 rounded-2xl bg-amber-400/10 border border-amber-400/20">
+                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-bold text-amber-200">Pending settle</p>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    {incomeSplitLatest.pendingSettle.weekStartDate} →{' '}
+                    {incomeSplitLatest.pendingSettle.weekEndDate} is closed and ready to settle.
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
+            {incomeSplitLatest?.latest ? (
+              <>
+                <div className="flex items-end justify-between">
+                  <div>
+                    <div className="text-[10px] font-semibold text-zinc-500">
+                      {incomeSplitLatest.latest.weekStartDate} →{' '}
+                      {incomeSplitLatest.latest.weekEndDate}
+                    </div>
+                    <div className="text-2xl font-black text-white mt-0.5">
+                      {formatCurrency(incomeSplitLatest.latest.totalIncome)}
+                    </div>
+                  </div>
+                  <span className="text-[9px] font-black uppercase text-emerald-400">
+                    {incomeSplitLatest.latest.activeDayCount} active day
+                    {incomeSplitLatest.latest.activeDayCount === 1 ? '' : 's'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {ALLOCATION_KEYS.map((key) => (
+                    <div
+                      key={key}
+                      className="px-3 py-2 rounded-xl bg-zinc-900/80 border border-zinc-800/60"
+                    >
+                      <div className="text-[9px] font-bold uppercase text-zinc-500">
+                        {ALLOCATION_LABELS[key]}
+                      </div>
+                      <div className="text-sm font-black text-white mt-0.5">
+                        {formatCurrency(incomeSplitLatest.latest.allocations?.[key] || 0)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              !incomeSplitLatest?.pendingSettle && (
+                <p className="text-[11px] text-zinc-500">
+                  No weekend settlements yet. Splits run after each Fri–Sun shop window.
+                </p>
+              )
+            )}
           </div>
 
           {/* 2. Card: LIFETIME PROFIT vs LIFETIME EXPENSE with Balance Bar */}

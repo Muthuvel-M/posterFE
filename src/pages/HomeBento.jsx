@@ -15,6 +15,7 @@ import {
   Palette,
   Banknote,
   TrendingDown,
+  PieChart,
 } from 'lucide-react';
 import { InstagramIcon } from '../components/InstagramIcon';
 import { useCatalog } from '../context/CatalogContext';
@@ -228,6 +229,35 @@ export const HomeBento = ({
               </div>
               <p className="text-[11px] text-white/80 mt-0.5 line-clamp-1">
                 Track store expenses, rent, supplies & live in-hand cash
+              </p>
+            </div>
+          </div>
+
+          <div className="w-7 h-7 rounded-full bg-black/20 group-hover:bg-black/30 flex items-center justify-center text-white shrink-0 transition-colors">
+            <ArrowRight className="w-3.5 h-3.5" />
+          </div>
+        </div>
+
+        {/* Wide Card: WEEKEND INCOME SPLIT */}
+        <div
+          onClick={() => onNavigate('income-splits')}
+          className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-[#78350f] via-[#92400e] to-[#a16207] hover:from-[#92400e] hover:to-[#ca8a04] text-white flex items-center justify-between gap-3 cursor-pointer shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all group animate-card-in stagger-8"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-black/30 text-amber-300 flex items-center justify-center font-bold shrink-0 shadow-sm">
+              <PieChart className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs sm:text-sm font-black tracking-tight text-white">
+                  WEEKEND INCOME SPLIT
+                </h3>
+                <span className="px-1.5 py-0.5 rounded-full text-[8.5px] font-extrabold uppercase bg-white/20 text-white border border-white/30">
+                  FRI–SUN
+                </span>
+              </div>
+              <p className="text-[11px] text-white/80 mt-0.5 line-clamp-1">
+                Split active-day income into reinvestment, PS5, savings & expenses
               </p>
             </div>
           </div>

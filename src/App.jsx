@@ -21,6 +21,7 @@ const SalesHistory = lazy(() => import('./pages/SalesHistory').then(m => ({ defa
 const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
 const Customization = lazy(() => import('./pages/Customization').then(m => ({ default: m.Customization })));
 const Expenses = lazy(() => import('./pages/Expenses').then(m => ({ default: m.Expenses })));
+const IncomeSplits = lazy(() => import('./pages/IncomeSplits').then(m => ({ default: m.IncomeSplits })));
 
 // Lazy load conditional dialogs
 const InstantQRModal = lazy(() => import('./components/InstantQRModal').then(m => ({ default: m.InstantQRModal })));
@@ -88,7 +89,10 @@ const MainLayout = () => {
             )}
             {activeTab === 'dashboard' && (
               <Suspense fallback={<PageLoadingFallback />}>
-                <Dashboard onOpenReceipt={(sale) => showReceipt(sale)} />
+                <Dashboard
+                  onOpenReceipt={(sale) => showReceipt(sale)}
+                  onNavigate={(tab) => setActiveTab(tab)}
+                />
               </Suspense>
             )}
             {activeTab === 'inventory' && (
@@ -145,6 +149,11 @@ const MainLayout = () => {
             {activeTab === 'expenses' && (
               <Suspense fallback={<PageLoadingFallback />}>
                 <Expenses onNavigate={(tab) => setActiveTab(tab)} />
+              </Suspense>
+            )}
+            {activeTab === 'income-splits' && (
+              <Suspense fallback={<PageLoadingFallback />}>
+                <IncomeSplits onNavigate={(tab) => setActiveTab(tab)} />
               </Suspense>
             )}
           </div>

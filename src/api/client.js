@@ -163,4 +163,21 @@ export const api = {
   updateExpense: (id, expenseData) =>
     request(`/expenses/${id}`, { method: 'PUT', body: JSON.stringify(expenseData) }),
   deleteExpense: (id) => request(`/expenses/${id}`, { method: 'DELETE' }),
+
+  // Income splits (Fri–Sun weekend window)
+  getIncomeSplitConfig: () => request('/income-splits/config'),
+  updateIncomeSplitConfig: (data) =>
+    request('/income-splits/config', { method: 'PUT', body: JSON.stringify(data) }),
+  previewIncomeSplit: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return request(`/income-splits/preview${query ? `?${query}` : ''}`);
+  },
+  settleIncomeSplit: (data = {}) =>
+    request('/income-splits/settle', { method: 'POST', body: JSON.stringify(data) }),
+  getIncomeSplits: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return request(`/income-splits${query ? `?${query}` : ''}`);
+  },
+  getIncomeSplitLatest: () => request('/income-splits/latest'),
+  getIncomeSplitById: (id) => request(`/income-splits/${id}`),
 };

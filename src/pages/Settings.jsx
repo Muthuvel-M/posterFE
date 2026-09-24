@@ -21,12 +21,20 @@ import {
   Save,
   QrCode,
   Sparkles,
+  PieChart,
 } from 'lucide-react';
 import { InstagramIcon } from '../components/InstagramIcon';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { api } from '../api/client';
+import {
+  ALLOCATION_KEYS,
+  ALLOCATION_LABELS,
+  DEFAULT_INCOME_SPLIT,
+  validatePercentages,
+  sumPercentages,
+} from '../utils/incomeSplit';
 
 export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNavigate }) => {
   const { user: authUser, logout } = useAuth();
@@ -56,7 +64,9 @@ export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNaviga
     lowStockThreshold: 5,
   });
 
+  const [incomeSplit, setIncomeSplit] = useState({ ...DEFAULT_INCOME_SPLIT });
   const [submitting, setSubmitting] = useState(false);
+  const [savingSplit, setSavingSplit] = useState(false);
 
   useEffect(() => {
     if (settings) {
@@ -76,10 +86,63 @@ export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNaviga
         receiptFooterNote: settings.receiptFooterNote || 'Thank you for shopping!',
         lowStockThreshold: settings.lowStockThreshold || 5,
       }));
+      if (settings.incomeSplit) {
+        setIncomeSplit({
+          reinvestment: Number(settings.incomeSplit.reinvestment ?? DEFAULT_INCOME_SPLIT.reinvestment),
+          ps5Fund: Number(settings.incomeSplit.ps5Fund ?? DEFAULT_INCOME_SPLIT.ps5Fund),
+          savings: Number(settings.incomeSplit.savings ?? DEFAULT_INCOME_SPLIT.savings),
+          expenses: Number(settings.incomeSplit.expenses ?? DEFAULT_INCOME_SPLIT.expenses),
+        });
+      }
     }
   }, [settings]);
 
+  useEffect(() => {
+    api
+      .getIncomeSplitConfig()
+      .then((res) => {
+        if (res?.success && res.data) {
+          setIncomeSplit({
+            reinvestment: Number(res.data.reinvestment),
+            ps5Fund: Number(res.data.ps5Fund),
+            savings: Number(res.data.savings),
+            expenses: Number(res.data.expenses),
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const upiIdRegex = /^[\w.\-]{2,}@[\w]{2,}$/;
+  const splitCheck = validatePercentages(incomeSplit);
+  const splitSum = Math.round(sumPercentages(incomeSplit) * 100) / 100;
+
+  const handleSaveIncomeSplit = async () => {
+    if (!splitCheck.valid) {
+      showToast(splitCheck.message || 'Percentages must sum to 100', 'error');
+      return;
+    }
+    try {
+      setSavingSplit(true);
+      const res = await api.updateIncomeSplitConfig(incomeSplit);
+      if (res.success) {
+        showToast('Income split percentages saved', 'success');
+        setIncomeSplit({
+          reinvestment: Number(res.data.reinvestment),
+          ps5Fund: Number(res.data.ps5Fund),
+          savings: Number(res.data.savings),
+          expenses: Number(res.data.expenses),
+        });
+        if (onSettingsUpdated && settings) {
+          onSettingsUpdated({ ...settings, incomeSplit: res.data });
+        }
+      }
+    } catch (error) {
+      showToast(error.message || 'Failed to save income split', 'error');
+    } finally {
+      setSavingSplit(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
@@ -455,6 +518,92 @@ export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNaviga
               onChange={(e) => setFormData({ ...formData, receiptFooterNote: e.target.value })}
               className="w-full px-3.5 py-2.5 rounded-2xl bg-zinc-900/90 border border-zinc-800 text-xs sm:text-sm text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
             />
+          </div>
+        </div>
+      </div>
+
+        </div>
+      </div>
+
+      {/* ─────────────────────────────────────────────────────────────
+          SECTION: WEEKEND INCOME SPLIT
+         ───────────────────────────────────────────────────────────── */}
+      <div className="space-y-2 animate-card-in stagger-4">
+        <div className="flex items-center justify-between px-1">
+          <h2 className="text-[11px] font-black uppercase tracking-widest text-zinc-400">
+            Weekend income split
+          </h2>
+          <span
+            className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+              splitCheck.valid
+                ? 'bg-emerald-500/15 text-emerald-400'
+                : 'bg-rose-500/15 text-rose-400'
+            }`}
+          >
+            Total {splitSum}%
+          </span>
+        </div>
+
+        <div className="p-4 rounded-3xl bg-[#1c1c22] border border-zinc-800/80 space-y-3 shadow-lg">
+          <p className="text-[11px] text-zinc-400 leading-relaxed">
+            Percentages applied to Fri–Sat–Sun income after each weekend. Only days with
+            sales count toward the pool.
+          </p>
+
+          {ALLOCATION_KEYS.map((key) => (
+            <div key={key} className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-400 shrink-0">
+                <PieChart className="w-4 h-4" />
+              </div>
+              <div className="flex-1 flex items-center justify-between gap-3">
+                <label className="text-[10px] uppercase font-bold text-zinc-400">
+                  {ALLOCATION_LABELS[key]}
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.01}
+                    value={incomeSplit[key]}
+                    onChange={(e) =>
+                      setIncomeSplit((prev) => ({
+                        ...prev,
+                        [key]: e.target.value === '' ? 0 : Number(e.target.value),
+                      }))
+                    }
+                    className="w-20 px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-sm font-mono text-right text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                  />
+                  <span className="text-xs font-bold text-zinc-500">%</span>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {!splitCheck.valid && (
+            <p className="text-[11px] font-semibold text-rose-400">{splitCheck.message}</p>
+          )}
+
+          <div className="flex gap-2 pt-1">
+            <button
+              type="button"
+              disabled={savingSplit || !splitCheck.valid}
+              onClick={handleSaveIncomeSplit}
+              className={`flex-1 py-2.5 rounded-2xl text-xs font-black transition-all ${
+                splitCheck.valid
+                  ? 'bg-amber-400 text-zinc-950 hover:bg-amber-300 cursor-pointer'
+                  : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+              }`}
+            >
+              {savingSplit ? 'Saving…' : 'Save split %'}
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigate && onNavigate('income-splits')}
+              className="px-4 py-2.5 rounded-2xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-zinc-300 hover:text-white flex items-center gap-1 cursor-pointer"
+            >
+              Open <ChevronRight className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
       </div>
