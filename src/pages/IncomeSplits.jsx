@@ -10,7 +10,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, formatWeekendRange } from '../utils/formatters';
 import { api } from '../api/client';
 import {
   ALLOCATION_KEYS,
@@ -55,7 +55,7 @@ export const IncomeSplits = ({ onNavigate }) => {
     if (!preview?.canSettle) return;
     if (
       !window.confirm(
-        `Settle weekend ${preview.weekStartDate} → ${preview.weekEndDate} for ${formatCurrency(preview.totalIncome)}?`
+        `Settle weekend ${formatWeekendRange(preview.weekStartDate, preview.weekEndDate)} for ${formatCurrency(preview.totalIncome)}?`
       )
     ) {
       return;
@@ -124,7 +124,7 @@ export const IncomeSplits = ({ onNavigate }) => {
                 </span>
                 <div className="flex items-center gap-2 mt-1 text-sm font-bold text-white">
                   <Calendar className="w-4 h-4 text-zinc-400" />
-                  {preview?.weekStartDate} → {preview?.weekEndDate}
+                  {formatWeekendRange(preview?.weekStartDate, preview?.weekEndDate)}
                 </div>
               </div>
               <span
@@ -282,7 +282,7 @@ export const IncomeSplits = ({ onNavigate }) => {
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="text-xs font-black text-white">
-                          {item.weekStartDate} → {item.weekEndDate}
+                          {formatWeekendRange(item.weekStartDate, item.weekEndDate)}
                         </div>
                         <div className="text-[10px] text-zinc-500 font-semibold mt-0.5">
                           {item.activeDayCount} active day

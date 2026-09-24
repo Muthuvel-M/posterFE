@@ -545,7 +545,6 @@ export const Checkout = ({
                     : 'bg-[#151518] text-zinc-400 border border-zinc-800 hover:text-white'
                   }`}
               >
-                <span>%</span>
                 <span>% Percent</span>
               </button>
 

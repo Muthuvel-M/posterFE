@@ -34,6 +34,7 @@ import {
   DEFAULT_INCOME_SPLIT,
   validatePercentages,
   sumPercentages,
+  buildEqualSplit,
 } from '../utils/incomeSplit';
 
 export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNavigate }) => {
@@ -522,9 +523,6 @@ export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNaviga
         </div>
       </div>
 
-        </div>
-      </div>
-
       {/* ─────────────────────────────────────────────────────────────
           SECTION: WEEKEND INCOME SPLIT
          ───────────────────────────────────────────────────────────── */}
@@ -546,8 +544,9 @@ export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNaviga
 
         <div className="p-4 rounded-3xl bg-[#1c1c22] border border-zinc-800/80 space-y-3 shadow-lg">
           <p className="text-[11px] text-zinc-400 leading-relaxed">
-            Percentages applied to Fri–Sat–Sun income after each weekend. Only days with
-            sales count toward the pool.
+            Equal split only — all four must be the same percentage and total 100%
+            (25% each). Applied to Fri–Sat–Sun income after each weekend; inactive days
+            are excluded from the pool.
           </p>
 
           {ALLOCATION_KEYS.map((key) => (
@@ -566,12 +565,10 @@ export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNaviga
                     max={100}
                     step={0.01}
                     value={incomeSplit[key]}
-                    onChange={(e) =>
-                      setIncomeSplit((prev) => ({
-                        ...prev,
-                        [key]: e.target.value === '' ? 0 : Number(e.target.value),
-                      }))
-                    }
+                    onChange={(e) => {
+                      const next = e.target.value === '' ? 0 : Number(e.target.value);
+                      setIncomeSplit(buildEqualSplit(next));
+                    }}
                     className="w-20 px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-sm font-mono text-right text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
                   />
                   <span className="text-xs font-bold text-zinc-500">%</span>
@@ -579,6 +576,14 @@ export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNaviga
               </div>
             </div>
           ))}
+
+          <button
+            type="button"
+            onClick={() => setIncomeSplit(buildEqualSplit(25))}
+            className="text-[11px] font-bold text-amber-400 hover:text-amber-300 cursor-pointer"
+          >
+            Reset to equal 25% each
+          </button>
 
           {!splitCheck.valid && (
             <p className="text-[11px] font-semibold text-rose-400">{splitCheck.message}</p>

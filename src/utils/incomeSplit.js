@@ -1,6 +1,6 @@
 /**
- * Client-side income-split helpers (mirrors PosterBE incomeSplitService rounding).
- * Used for Settings validation and live allocation previews; backend remains source of truth.
+ * Client-side income-split helpers (mirrors PosterBE incomeSplitService).
+ * All four allocations must be equal and sum to 100 (25% each by default).
  */
 
 export const ALLOCATION_KEYS = ['reinvestment', 'ps5Fund', 'savings', 'expenses'];
@@ -13,11 +13,26 @@ export const ALLOCATION_LABELS = {
 };
 
 export const DEFAULT_INCOME_SPLIT = {
-  reinvestment: 40,
-  ps5Fund: 20,
-  savings: 20,
-  expenses: 20,
+  reinvestment: 25,
+  ps5Fund: 25,
+  savings: 25,
+  expenses: 25,
 };
+
+/**
+ * Builds an equal split object where every category gets the same percentage.
+ * @param {number} eachPercent
+ * @returns {Object}
+ */
+export function buildEqualSplit(eachPercent = 25) {
+  const value = Number(eachPercent) || 0;
+  return {
+    reinvestment: value,
+    ps5Fund: value,
+    savings: value,
+    expenses: value,
+  };
+}
 
 /**
  * @param {Object} percentages
@@ -27,6 +42,7 @@ export function validatePercentages(percentages) {
   if (!percentages || typeof percentages !== 'object') {
     return { valid: false, sum: 0, message: 'Percentages are required' };
   }
+  const values = [];
   let sum = 0;
   for (const key of ALLOCATION_KEYS) {
     const val = Number(percentages[key]);
@@ -37,10 +53,18 @@ export function validatePercentages(percentages) {
         message: `${ALLOCATION_LABELS[key] || key} must be between 0 and 100`,
       };
     }
+    values.push(val);
     sum += val;
   }
-  // Round to 2 decimals for floating display inputs
   sum = Math.round(sum * 100) / 100;
+  const first = values[0];
+  if (!values.every((v) => Math.abs(v - first) <= 0.01)) {
+    return {
+      valid: false,
+      sum,
+      message: 'All four allocations must be equal (e.g. 25% each)',
+    };
+  }
   if (Math.abs(sum - 100) > 0.01) {
     return {
       valid: false,
@@ -52,7 +76,7 @@ export function validatePercentages(percentages) {
 }
 
 /**
- * Computes currency allocations; remainder goes to expenses so sum === totalIncome.
+ * Even paise split across four equal buckets; leftover paise distributed round-robin.
  * @param {number} totalIncome
  * @param {Object} percentages
  * @returns {Object|null}
@@ -62,18 +86,15 @@ export function computeAllocations(totalIncome, percentages) {
   if (!check.valid) return null;
 
   const totalPaise = Math.round(Number(totalIncome) * 100);
+  const n = ALLOCATION_KEYS.length;
+  const base = Math.floor(totalPaise / n);
+  let remainder = totalPaise - base * n;
   const result = {};
-  let assigned = 0;
 
-  for (let i = 0; i < ALLOCATION_KEYS.length; i++) {
-    const key = ALLOCATION_KEYS[i];
-    if (i === ALLOCATION_KEYS.length - 1) {
-      result[key] = (totalPaise - assigned) / 100;
-    } else {
-      const paise = Math.floor((totalPaise * Number(percentages[key])) / 100);
-      result[key] = paise / 100;
-      assigned += paise;
-    }
+  for (let i = 0; i < n; i++) {
+    const extra = remainder > 0 ? 1 : 0;
+    if (remainder > 0) remainder -= 1;
+    result[ALLOCATION_KEYS[i]] = (base + extra) / 100;
   }
   return result;
 }

@@ -19,7 +19,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, formatWeekendRange } from '../utils/formatters';
 import { api } from '../api/client';
 import { ALLOCATION_KEYS, ALLOCATION_LABELS } from '../utils/incomeSplit';
 
@@ -178,8 +178,11 @@ export const Dashboard = ({ onOpenReceipt, onNavigate }) => {
                 <div>
                   <p className="text-xs font-bold text-amber-200">Pending settle</p>
                   <p className="text-[11px] text-zinc-400 mt-0.5">
-                    {incomeSplitLatest.pendingSettle.weekStartDate} →{' '}
-                    {incomeSplitLatest.pendingSettle.weekEndDate} is closed and ready to settle.
+                    {formatWeekendRange(
+                      incomeSplitLatest.pendingSettle.weekStartDate,
+                      incomeSplitLatest.pendingSettle.weekEndDate
+                    )}{' '}
+                    is closed and ready to settle.
                   </p>
                 </div>
               </div>
@@ -190,8 +193,10 @@ export const Dashboard = ({ onOpenReceipt, onNavigate }) => {
                 <div className="flex items-end justify-between">
                   <div>
                     <div className="text-[10px] font-semibold text-zinc-500">
-                      {incomeSplitLatest.latest.weekStartDate} →{' '}
-                      {incomeSplitLatest.latest.weekEndDate}
+                      {formatWeekendRange(
+                        incomeSplitLatest.latest.weekStartDate,
+                        incomeSplitLatest.latest.weekEndDate
+                      )}
                     </div>
                     <div className="text-2xl font-black text-white mt-0.5">
                       {formatCurrency(incomeSplitLatest.latest.totalIncome)}

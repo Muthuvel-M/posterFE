@@ -29,6 +29,53 @@ export const formatDate = (dateInput) => {
 };
 
 /**
+ * Formats a shop calendar key (YYYY-MM-DD) without timezone shift.
+ * Example: formatShopDateLabel('2026-09-25') => 25 Sep 2026
+ */
+export const formatShopDateLabel = (ymd) => {
+  if (!ymd || typeof ymd !== 'string') return '-';
+  const match = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return formatDate(ymd);
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  if (isNaN(date.getTime())) return '-';
+  return date.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+};
+
+/**
+ * Formats a Fri–Sun weekend range for display.
+ * Example: formatWeekendRange('2026-09-25', '2026-09-27') => 25 Sep – 27 Sep 2026
+ */
+export const formatWeekendRange = (weekStartDate, weekEndDate) => {
+  if (!weekStartDate || !weekEndDate) return '-';
+  const startMatch = String(weekStartDate).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const endMatch = String(weekEndDate).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!startMatch || !endMatch) {
+    return `${formatShopDateLabel(weekStartDate)} – ${formatShopDateLabel(weekEndDate)}`;
+  }
+  const start = new Date(Number(startMatch[1]), Number(startMatch[2]) - 1, Number(startMatch[3]));
+  const end = new Date(Number(endMatch[1]), Number(endMatch[2]) - 1, Number(endMatch[3]));
+  const sameYear = start.getFullYear() === end.getFullYear();
+  const startLabel = start.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    ...(sameYear ? {} : { year: 'numeric' }),
+  });
+  const endLabel = end.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+  return `${startLabel} – ${endLabel}`;
+};
+
+/**
  * Formats datetime into readable format with time
  */
 export const formatDateTime = (dateInput) => {
