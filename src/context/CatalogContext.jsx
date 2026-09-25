@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../api/client';
 import { useToast } from './ToastContext';
 
@@ -14,6 +14,7 @@ const STORAGE_KEYS = {
 };
 
 const SYNC_INTERVAL = 30 * 60 * 1000; // 30 Minutes
+const SYNC_FAILURE_COOLDOWN = 60 * 1000; // Back off 60s after a failed live sync
 
 export const CatalogProvider = ({ children }) => {
   const { showToast } = useToast();
@@ -75,24 +76,55 @@ export const CatalogProvider = ({ children }) => {
 
   const [isSyncing, setIsSyncing] = useState(false);
 
+  // Refs keep refreshCatalog stable so the interval effect does not re-fire on every sync
+  const lastSyncTimeRef = useRef(lastSyncTime);
+  const productsCountRef = useRef(products.length);
+  const isSyncingRef = useRef(false);
+  const lastFailureAtRef = useRef(0);
+
+  useEffect(() => {
+    lastSyncTimeRef.current = lastSyncTime;
+  }, [lastSyncTime]);
+
+  useEffect(() => {
+    productsCountRef.current = products.length;
+  }, [products.length]);
+
   // Background Sync function (does not block local UI)
   const refreshCatalog = useCallback(async (force = false) => {
     const now = Date.now();
     const token = localStorage.getItem('auraframe_token');
     if (!token) return;
 
+    // Prevent concurrent / looped sync storms against the live API
+    if (isSyncingRef.current) return;
+
+    if (
+      !force &&
+      lastFailureAtRef.current &&
+      now - lastFailureAtRef.current < SYNC_FAILURE_COOLDOWN
+    ) {
+      return;
+    }
+
     // Skip if cache is still fresh within 30 minutes, unless force=true
-    if (!force && lastSyncTime && now - lastSyncTime < SYNC_INTERVAL && products.length > 0) {
+    if (
+      !force &&
+      lastSyncTimeRef.current &&
+      now - lastSyncTimeRef.current < SYNC_INTERVAL &&
+      productsCountRef.current > 0
+    ) {
       return;
     }
 
     try {
+      isSyncingRef.current = true;
       setIsSyncing(true);
       const [prodsRes, analyticsRes, settingsRes, custRes] = await Promise.all([
-        api.getProducts({ active: 'all' }).catch(() => ({})),
-        api.getAnalytics({ timeframe: 'today' }).catch(() => ({})),
-        api.getSettings().catch(() => ({})),
-        api.getCustomers().catch(() => ({})),
+        api.getProducts({ active: 'all' }),
+        api.getAnalytics({ timeframe: 'today' }),
+        api.getSettings(),
+        api.getCustomers(),
       ]);
 
       if (prodsRes?.data && Array.isArray(prodsRes.data)) {
@@ -124,24 +156,25 @@ export const CatalogProvider = ({ children }) => {
         localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(custRes.data));
       }
 
+      lastFailureAtRef.current = 0;
       setLastSyncTime(now);
       localStorage.setItem(STORAGE_KEYS.LAST_SYNC, String(now));
     } catch (err) {
+      lastFailureAtRef.current = Date.now();
       console.warn('Background sync warning:', err.message);
     } finally {
+      isSyncingRef.current = false;
       setIsSyncing(false);
     }
-  }, [lastSyncTime, products.length]);
+  }, []);
 
-  // Initial Sync & 30-Minute Recurring Interval
+  // Initial Sync & 30-Minute Recurring Interval (stable deps — runs once on mount)
   useEffect(() => {
     const token = localStorage.getItem('auraframe_token');
     if (token) {
-      // Refresh only if empty or expired (>30m)
       refreshCatalog(false);
     }
 
-    // Auto-refresh every 30 minutes
     const interval = setInterval(() => {
       refreshCatalog(true);
     }, SYNC_INTERVAL);
