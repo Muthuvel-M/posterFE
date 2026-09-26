@@ -40,7 +40,7 @@ const PageLoadingFallback = () => (
 const MainLayout = () => {
   const { user, isAuthenticated, loading } = useAuth();
   const { showReceipt } = useCart();
-  const { settings, customers, updateSettingsLocally, addCustomerLocally, updateProductLocally, refreshCatalog } = useCatalog();
+  const { settings, customers, updateSettingsLocally, addCustomerLocally, updateProductLocally } = useCatalog();
 
   const [activeTab, setActiveTab] = useState('home'); // Home Bento as default
   const [isInstantQROpen, setIsInstantQROpen] = useState(false);
@@ -195,7 +195,7 @@ const MainLayout = () => {
           <RawMaterialModal
             isOpen={isRawMaterialOpen}
             onClose={() => setIsRawMaterialOpen(false)}
-            onSaveSuccess={() => refreshCatalog(true)}
+            onSaveSuccess={() => {}}
           />
         )}
       </Suspense>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import confetti from 'canvas-confetti';
 import {
@@ -41,6 +41,8 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
   const [completedSaleData, setCompletedSaleData] = useState(null);
   const [isSuccessView, setIsSuccessView] = useState(false);
   const [loadingAction, setLoadingAction] = useState(null); // 'init' | 'mark_paid' | 'cash'
+  const paymentCompletedRef = useRef(false);
+  const initInFlightRef = useRef(false);
 
   const rawUpiId = settings?.upiId?.trim() || 'mmuthuvel126@ibl';
   const isUpiConfigured = Boolean(rawUpiId && UPI_REGEX.test(rawUpiId));
@@ -48,21 +50,31 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
     ? settings.businessName.trim()
     : 'AuraFrame26';
 
-  // Initialize/Regenerate pending sale when PayModal opens or when total changes
+  // Create a pending sale when the modal opens. Never wipe the success screen
+  // when catalog/stock updates re-render this component.
   useEffect(() => {
-    if (isPayModalOpen && cartItems.length > 0) {
-      setIsSuccessView(false);
-      setCompletedSaleData(null);
-      initSaleFlow();
-    } else {
+    if (!isPayModalOpen) {
+      paymentCompletedRef.current = false;
+      initInFlightRef.current = false;
       setActiveSale(null);
       setIsSuccessView(false);
       setCompletedSaleData(null);
+      setLoadingAction(null);
+      return;
     }
+
+    if (paymentCompletedRef.current) return;
+    if (!cartItems.length) return;
+    if (initInFlightRef.current) return;
+
+    initSaleFlow();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-init when modal opens or payable total changes before payment
   }, [isPayModalOpen, total]);
 
   const initSaleFlow = async () => {
+    if (paymentCompletedRef.current || initInFlightRef.current) return;
     try {
+      initInFlightRef.current = true;
       setLoadingAction('init');
 
       const payload = {
@@ -81,17 +93,24 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
       };
 
       const res = await api.createSale(payload);
+      if (paymentCompletedRef.current) return;
       if (res.success && res.data) {
         setActiveSale(res.data);
       }
     } catch (err) {
-      showToast(err.message || 'Failed to initialize sale', 'error');
+      if (!paymentCompletedRef.current) {
+        showToast(err.message || 'Failed to initialize sale', 'error');
+      }
     } finally {
-      setLoadingAction(null);
+      initInFlightRef.current = false;
+      if (!paymentCompletedRef.current) {
+        setLoadingAction(null);
+      }
     }
   };
 
   const handlePaymentCompleted = (completedSale) => {
+    paymentCompletedRef.current = true;
     try {
       confetti({
         particleCount: 100,
@@ -99,44 +118,54 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
         origin: { y: 0.6 },
         colors: ['#10b981', '#34d399', '#f59e0b', '#818cf8'],
       });
-    } catch (e) {}
+    } catch (e) {
+      /* confetti optional */
+    }
 
-    // Deduct stock and update sales metrics locally with 0ms latency
-    deductStockForSale(completedSale);
+    try {
+      deductStockForSale(completedSale);
+    } catch (e) {
+      console.warn('Local stock update failed:', e);
+    }
 
     setCompletedSaleData(completedSale);
     setIsSuccessView(true);
+    setLoadingAction(null);
     if (onSaleSuccess) onSaleSuccess(completedSale);
   };
 
   // "Payment Received" button handler: marks paid, decrements stock atomically
   const handlePaymentReceived = async () => {
-    if (!activeSale) return;
+    if (!activeSale || paymentCompletedRef.current) return;
     try {
       setLoadingAction('mark_paid');
       const res = await api.markSalePaid(activeSale._id, 'upi');
       if (res.success && res.data) {
         handlePaymentCompleted(res.data);
+      } else {
+        showToast(res.message || 'Failed to confirm payment', 'error');
+        setLoadingAction(null);
       }
     } catch (error) {
       showToast(error.message || 'Failed to confirm payment', 'error');
-    } finally {
       setLoadingAction(null);
     }
   };
 
   // "Cash" payment handler: marks paid with cash method, decrements stock
   const handleCashPayment = async () => {
-    if (!activeSale) return;
+    if (!activeSale || paymentCompletedRef.current) return;
     try {
       setLoadingAction('cash');
       const res = await api.markSalePaid(activeSale._id, 'cash');
       if (res.success && res.data) {
         handlePaymentCompleted(res.data);
+      } else {
+        showToast(res.message || 'Failed to record cash payment', 'error');
+        setLoadingAction(null);
       }
     } catch (error) {
       showToast(error.message || 'Failed to record cash payment', 'error');
-    } finally {
       setLoadingAction(null);
     }
   };
@@ -185,23 +214,27 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
   if (!shouldRender) return null;
 
   const orderId = activeSale?.saleNumber || 'AF-1001';
-  const directUpiUrl = `upi://pay?pa=${rawUpiId}&pn=${encodeURIComponent(businessName)}&am=${total.toFixed(2)}&cu=INR&tn=${orderId}`;
+  const payable = Number(total) || 0;
+  const directUpiUrl = `upi://pay?pa=${rawUpiId}&pn=${encodeURIComponent(businessName)}&am=${payable.toFixed(2)}&cu=INR&tn=${orderId}`;
 
   // ─────────────────────────────────────────────────────────────
-  // SUCCESS VIEW: Payment Received! (Screenshot 1)
+  // SUCCESS VIEW: Payment Received!
   // ─────────────────────────────────────────────────────────────
   if (isSuccessView && completedSaleData) {
     const custDisplayName =
       completedSaleData.customerSnapshot?.name ||
       customer?.name ||
       'Walk-in Customer';
+    const paidAmount = Number(completedSaleData.total) || payable;
 
     return (
       <div
         className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/90 backdrop-blur-md no-print ${
           isClosing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop-in'
         }`}
-        onClick={requestClose}
+        onClick={(e) => {
+          e.stopPropagation();
+        }}
       >
         <div
           className={`w-full max-w-sm rounded-t-[36px] sm:rounded-[36px] bg-[#121215] border border-zinc-800/90 shadow-2xl p-8 flex flex-col items-center text-center text-white ${
@@ -221,12 +254,11 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
             Payment Received!
           </h2>
           <p className="text-sm font-semibold text-zinc-400 mt-1 mb-8">
-            ₹{completedSaleData.total} · {custDisplayName}
+            {formatCurrency(paidAmount)} · {custDisplayName}
           </p>
 
-          {/* 3 Action Buttons matching Screenshot 1 */}
+          {/* 3 Action Buttons */}
           <div className="w-full space-y-3">
-            {/* Button 1: View Receipt (Golden Amber) */}
             <button
               type="button"
               onClick={handleViewReceipt}
@@ -235,7 +267,6 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
               View Receipt
             </button>
 
-            {/* Button 2: Send WhatsApp (Green) */}
             <button
               type="button"
               onClick={handleSendWhatsApp}
@@ -245,7 +276,6 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
               <span>Send WhatsApp</span>
             </button>
 
-            {/* Button 3: New Sale (Dark) */}
             <button
               type="button"
               onClick={handleStartNewSale}

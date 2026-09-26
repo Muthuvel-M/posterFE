@@ -59,6 +59,7 @@ export const AuthProvider = ({ children }) => {
       setUser(res.user);
       localStorage.setItem('auraframe_token', res.token);
       localStorage.setItem('auraframe_user', JSON.stringify(res.user));
+      window.dispatchEvent(new Event('auraframe_login'));
       return res;
     }
     throw new Error(res.message || 'Login failed');
@@ -71,6 +72,7 @@ export const AuthProvider = ({ children }) => {
       setUser(res.user);
       localStorage.setItem('auraframe_token', res.token);
       localStorage.setItem('auraframe_user', JSON.stringify(res.user));
+      window.dispatchEvent(new Event('auraframe_login'));
       return res;
     }
     throw new Error(res.message || 'Registration failed');
@@ -87,6 +89,7 @@ export const AuthProvider = ({ children }) => {
       setUser(res.user);
       localStorage.setItem('auraframe_token', res.token);
       localStorage.setItem('auraframe_user', JSON.stringify(res.user));
+      window.dispatchEvent(new Event('auraframe_login'));
       return res;
     }
     throw new Error(res.message || 'Google authentication failed');
@@ -97,6 +100,7 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     localStorage.removeItem('auraframe_token');
     localStorage.removeItem('auraframe_user');
+    window.dispatchEvent(new Event('auraframe_logout'));
   };
 
   return (

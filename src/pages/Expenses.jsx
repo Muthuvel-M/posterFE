@@ -37,13 +37,29 @@ export const Expenses = ({ onNavigate }) => {
     count: 0,
   });
   const [stats, setStats] = useState(null);
-  const [cashFlow, setCashFlow] = useState({
-    cashInHand: 0,
-    lifetimeCashInflow: 0,
-    lifetimeCashOutflow: 0,
-    todayCashInflow: 0,
-    todayCashOutflow: 0,
-    todayNetCash: 0,
+  const [cashFlow, setCashFlow] = useState(() => {
+    try {
+      const cached = localStorage.getItem('auraframe_cached_counts');
+      const parsed = cached ? JSON.parse(cached) : null;
+      if (parsed?.cashFlow) return parsed.cashFlow;
+      return {
+        cashInHand: parsed?.cashInHand || 0,
+        lifetimeCashInflow: 0,
+        lifetimeCashOutflow: 0,
+        todayCashInflow: 0,
+        todayCashOutflow: 0,
+        todayNetCash: 0,
+      };
+    } catch {
+      return {
+        cashInHand: 0,
+        lifetimeCashInflow: 0,
+        lifetimeCashOutflow: 0,
+        todayCashInflow: 0,
+        todayCashOutflow: 0,
+        todayNetCash: 0,
+      };
+    }
   });
 
   const [loading, setLoading] = useState(true);
@@ -69,10 +85,10 @@ export const Expenses = ({ onNavigate }) => {
         search: searchTerm,
       };
 
-      const [expRes, statsRes, analyticsRes] = await Promise.all([
+      // Expenses list + stats only — cash-in-hand from Home-cached counts (no extra analytics call)
+      const [expRes, statsRes] = await Promise.all([
         api.getExpenses(params).catch(() => ({ success: false, data: [] })),
         api.getExpenseStats({ timeframe }).catch(() => ({ success: false, data: null })),
-        api.getDashboardCounts().catch(() => ({ success: false, data: null })),
       ]);
 
       if (expRes?.success && expRes.data) {
@@ -86,8 +102,18 @@ export const Expenses = ({ onNavigate }) => {
         setStats(statsRes.data);
       }
 
-      if (analyticsRes?.success && analyticsRes.data?.cashFlow) {
-        setCashFlow(analyticsRes.data.cashFlow);
+      try {
+        const cached = localStorage.getItem('auraframe_cached_counts');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed?.cashFlow) {
+            setCashFlow(parsed.cashFlow);
+          } else if (parsed?.cashInHand !== undefined) {
+            setCashFlow((prev) => ({ ...prev, cashInHand: parsed.cashInHand }));
+          }
+        }
+      } catch {
+        /* ignore */
       }
     } catch (err) {
       showToast('Failed to load expenses', 'error');

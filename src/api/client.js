@@ -125,6 +125,9 @@ export const api = {
   },
   getDashboardCounts: () => request('/analytics/counts'),
 
+  // Cold-start: products + settings + customers + recent sales + counts in one call
+  getBootstrap: () => request('/bootstrap'),
+
   // Settings
   getSettings: () => request('/settings'),
   updateSettings: (settingsData) =>

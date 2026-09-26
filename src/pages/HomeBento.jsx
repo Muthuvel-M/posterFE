@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   TrendingUp,
   Users,
@@ -20,7 +20,6 @@ import {
 import { InstagramIcon } from '../components/InstagramIcon';
 import { useCatalog } from '../context/CatalogContext';
 import { formatCurrency, formatDateTime } from '../utils/formatters';
-import { api } from '../api/client';
 
 export const HomeBento = ({
   user,
@@ -31,22 +30,13 @@ export const HomeBento = ({
   onOpenReceipt,
   onOpenInstagramQR,
 }) => {
-  const { products, todaySummary, recentSales, isSyncing, refreshCatalog } = useCatalog();
-  const [customStats, setCustomStats] = useState({ total: 0, inProduction: 0, readyForPickup: 0 });
-  const [cashInHand, setCashInHand] = useState(0);
-
-  useEffect(() => {
-    api.getDashboardCounts().then((res) => {
-      if (res?.success && res.data) {
-        if (res.data.cashFlow?.cashInHand !== undefined) {
-          setCashInHand(res.data.cashFlow.cashInHand);
-        }
-        if (res.data.customOrders) {
-          setCustomStats(res.data.customOrders);
-        }
-      }
-    }).catch(() => {});
-  }, [isSyncing]);
+  const { products, todaySummary, recentSales, dashboardCounts } = useCatalog();
+  const customStats = dashboardCounts?.customOrders || {
+    total: 0,
+    inProduction: 0,
+    readyForPickup: 0,
+  };
+  const cashInHand = dashboardCounts?.cashInHand ?? 0;
 
   // Dynamic time-based greeting
   const getGreeting = () => {
