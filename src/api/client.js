@@ -183,4 +183,12 @@ export const api = {
   },
   getIncomeSplitLatest: () => request('/income-splits/latest'),
   getIncomeSplitById: (id) => request(`/income-splits/${id}`),
+  getMonthWeekendSplits: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return request(`/income-splits/month-splits${query ? `?${query}` : ''}`);
+  },
+  getDailySplitsForMonth: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return request(`/income-splits/daily-splits${query ? `?${query}` : ''}`);
+  },
 };
