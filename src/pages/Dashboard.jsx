@@ -240,7 +240,7 @@ export const Dashboard = ({ onOpenReceipt, onNavigate }) => {
                 <span className="text-zinc-400 uppercase text-[10px]">NET BUSINESS PROFIT</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-zinc-400 uppercase text-[10px]">TOTAL EXPENSE / COGS</span>
+                <span className="text-zinc-400 uppercase text-[10px]">TOTAL EXPENSE</span>
                 <span className="w-2 h-2 rounded-full bg-[#ff5722]" />
               </div>
             </div>

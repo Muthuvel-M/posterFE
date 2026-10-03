@@ -687,9 +687,9 @@ export const Customization = ({ onNavigate, settings }) => {
         )}
       </div>
 
-      {/* Floating Action Button (FAB) for New Custom Order */}
+      {/* Floating Action Button (FAB) for New Custom Order — BottomNav hidden here */}
       {!isModalOpen && (
-        <div className="fixed bottom-24 right-4 sm:right-8 sm:bottom-28 z-30 pointer-events-auto no-print">
+        <div className="fixed above-safe-bottom right-4 sm:right-8 z-30 pointer-events-auto no-print">
           <button
             type="button"
             onClick={handleOpenAddModal}

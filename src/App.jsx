@@ -85,6 +85,7 @@ const MainLayout = () => {
                 customers={customers}
                 onCustomerCreated={addCustomerLocally}
                 onOpenAddProduct={() => setIsAddProductOpen(true)}
+                onNavigate={(tab) => setActiveTab(tab)}
               />
             )}
             {activeTab === 'dashboard' && (
@@ -200,11 +201,13 @@ const MainLayout = () => {
         )}
       </Suspense>
 
-      {/* Mobile Bottom Navigation */}
-      <BottomNav
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-      />
+      {/* Mobile Bottom Navigation — hidden on Checkout & Custom Orders (FAB screens) */}
+      {activeTab !== 'checkout' && activeTab !== 'customization' && (
+        <BottomNav
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+        />
+      )}
     </div>
   );
 };

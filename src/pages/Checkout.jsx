@@ -24,6 +24,7 @@ export const Checkout = ({
   customers = [],
   onCustomerCreated,
   onOpenAddProduct,
+  onNavigate,
 }) => {
   const {
     cartItems,
@@ -117,6 +118,16 @@ export const Checkout = ({
           <div className="animate-card-in stagger-1">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
+                {onNavigate && (
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('home')}
+                    className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                    title="Back to Home"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                  </button>
+                )}
                 <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">
                   New Sale
                 </h1>
@@ -373,9 +384,9 @@ export const Checkout = ({
             </div>
           )}
 
-          {/* Floating Bottom Subtotal Bar */}
+          {/* Floating Bottom Subtotal Bar — BottomNav hidden on checkout */}
           {itemCount > 0 && (
-            <div className="fixed bottom-20 left-4 right-4 max-w-xl mx-auto z-30 animate-card-in">
+            <div className="fixed above-safe-bottom left-4 right-4 max-w-xl mx-auto z-30 animate-card-in">
               <div className="p-3.5 sm:p-4 rounded-3xl bg-[#151518]/95 backdrop-blur-xl border border-zinc-800 shadow-2xl flex items-center justify-between">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">

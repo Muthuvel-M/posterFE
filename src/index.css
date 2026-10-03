@@ -24,6 +24,20 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/*
+  Floating UI above the BottomNav.
+  BottomNav sits at bottom-4 (1rem) + safe-area; pill ~3.5rem with FAB peek.
+  Keep a small gap so the subtotal bar never overlaps the nav.
+*/
+.above-bottom-nav {
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px) + 5.75rem);
+}
+
+/* Floating UI when BottomNav is hidden (Checkout / Custom Orders) */
+.above-safe-bottom {
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+}
+
 /* Pitch Dark Surfaces & Utilities */
 .dark-card {
   @apply bg-[#151518] border border-zinc-800/80 rounded-3xl shadow-lg;
