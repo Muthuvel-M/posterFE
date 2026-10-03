@@ -19,7 +19,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
-import { formatCurrency, formatWeekendRange } from '../utils/formatters';
+import { formatCurrency, formatWeekendRange, getProductInitial } from '../utils/formatters';
 import { api } from '../api/client';
 import { ALLOCATION_KEYS, ALLOCATION_LABELS } from '../utils/incomeSplit';
 
@@ -343,12 +343,18 @@ export const Dashboard = ({ onOpenReceipt, onNavigate }) => {
                     className="p-3.5 rounded-2xl bg-[#1c1c22] border border-zinc-800/80 flex items-center justify-between group transition-all animate-card-in"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-xl bg-zinc-900 border border-zinc-800 overflow-hidden flex items-center justify-center text-zinc-400 shrink-0">
-                        {item.image ? (
-                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-xl">{item.category === 'frame' ? '🔲' : '🖼️'}</span>
-                        )}
+                      <div className="w-11 h-11 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center shrink-0">
+                        <span
+                          className={`font-black tracking-tight text-sm ${
+                            item.category === 'sticker'
+                              ? 'text-fuchsia-300'
+                              : item.category === 'frame'
+                              ? 'text-sky-300'
+                              : 'text-amber-300'
+                          }`}
+                        >
+                          {getProductInitial(item)}
+                        </span>
                       </div>
                       <div>
                         <h4 className="text-sm font-bold text-white leading-tight">

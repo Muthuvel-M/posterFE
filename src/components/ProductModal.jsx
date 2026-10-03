@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   X,
-  Camera,
   Tag,
   Plus,
   Trash2,
@@ -9,6 +8,7 @@ import {
 import { useToast } from '../context/ToastContext';
 import { useModalAnimation } from '../hooks/useModalAnimation';
 import { api } from '../api/client';
+import { getProductInitial } from '../utils/formatters';
 
 export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
   const { showToast } = useToast();
@@ -19,7 +19,6 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
   const [name, setName] = useState('');
   const [category, setCategory] = useState('Poster');
   const [size, setSize] = useState('A4');
-  const [image, setImage] = useState('');
 
   // Prices & Stock
   const [sellPrice, setSellPrice] = useState(0);
@@ -46,7 +45,6 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
       setName(product.name || '');
       setCategory(product.category === 'frame' ? 'Frame' : product.category || 'Poster');
       setSize(product.size || 'A4');
-      setImage(product.image || '');
       setSellPrice(product.sellPrice ?? 0);
       setCostPrice(product.costPrice ?? 0);
       setOperatingCost(product.operatingCost ?? 0);
@@ -63,7 +61,6 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
       setName('');
       setCategory('Poster');
       setSize('A4');
-      setImage('');
       setSellPrice(40);
       setCostPrice(15);
       setOperatingCost(0);
@@ -79,21 +76,6 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
   }, [product, isOpen]);
 
   if (!isOpen) return null;
-
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      showToast('Image must be under 5MB', 'error');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImage(reader.result);
-      showToast('Photo attached', 'success', 1500);
-    };
-    reader.readAsDataURL(file);
-  };
 
   const handleCategorySelect = (cat) => {
     setCategory(cat);
@@ -189,7 +171,7 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
         name: name.trim(),
         category: normalizedCategory,
         size: size || 'A4',
-        image: image || '',
+        image: '',
         costPrice: Number(costPrice) || 0,
         sellPrice: Number(sellPrice) || 0,
         operatingCost: Number(operatingCost) || 0,
@@ -252,32 +234,28 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
 
         {/* Scrollable Form Body */}
         <div className="p-6 overflow-y-auto space-y-4 no-scrollbar flex-1">
-          {/* Centered Photo Upload Card */}
+          {/* Size initial preview (no product photo) */}
           <div className="flex justify-center">
-            <label className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-[#1c1c22] border border-zinc-800 hover:border-zinc-700 flex flex-col items-center justify-center gap-2 cursor-pointer text-zinc-400 hover:text-white transition-all overflow-hidden relative group shadow-inner">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-              {image ? (
-                <img
-                  src={image}
-                  alt="Product preview"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <>
-                  <div className="w-10 h-10 rounded-2xl bg-zinc-800/80 flex items-center justify-center text-zinc-400 group-hover:scale-110 group-hover:text-amber-300 transition-all">
-                    <Camera className="w-5 h-5" />
-                  </div>
-                  <span className="text-xs font-semibold text-zinc-400 group-hover:text-zinc-200">
-                    Upload Photo
-                  </span>
-                </>
-              )}
-            </label>
+            <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-[#1c1c22] border border-zinc-800 flex flex-col items-center justify-center shadow-inner">
+              <span
+                className={`font-black tracking-tight ${
+                  getProductInitial({ name, size, category, sellPrice }).length <= 2
+                    ? 'text-4xl'
+                    : 'text-3xl'
+                } ${
+                  category.toLowerCase().includes('sticker')
+                    ? 'text-fuchsia-300'
+                    : category.toLowerCase().includes('frame')
+                    ? 'text-sky-300'
+                    : 'text-amber-300'
+                }`}
+              >
+                {getProductInitial({ name, size, category, sellPrice })}
+              </span>
+              <span className="text-[10px] font-semibold text-zinc-500 mt-1 uppercase tracking-wider">
+                Preview
+              </span>
+            </div>
           </div>
 
           {/* Product Name * */}

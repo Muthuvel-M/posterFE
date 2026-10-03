@@ -17,7 +17,7 @@ import {
 import { useCart } from '../context/CartContext';
 import { useCatalog } from '../context/CatalogContext';
 import { useToast } from '../context/ToastContext';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, getProductInitial } from '../utils/formatters';
 import { api } from '../api/client';
 
 export const Checkout = ({
@@ -261,32 +261,23 @@ export const Checkout = ({
                         : 'bg-[#16161a] hover:bg-[#1b1b22] border border-zinc-800/80 hover:border-zinc-700'
                     }`}
                   >
-                    {/* Card Visual / Image Preview Container */}
+                    {/* Card Visual — size / sticker initial (no product image) */}
                     <div className="relative w-full aspect-square bg-[#0e0e11] overflow-hidden flex items-center justify-center">
-                      {p.image ? (
-                        <img
-                          src={p.image}
-                          alt={p.name}
-                          loading="lazy"
-                          decoding="async"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      ) : (
-                        <div className="text-center p-3">
-                          <span className="text-5xl block mb-1 drop-shadow-md">
-                            {p.emoji || (p.category === 'frame' ? '🔲' : p.category === 'sticker' ? '✨' : '🖼️')}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Top-Left Size / Category Badge */}
-                      {p.size && (
-                        <div className="absolute top-2.5 left-2.5 z-10">
-                          <span className="px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/10 text-[9.5px] font-black uppercase tracking-wider text-amber-300 shadow-sm">
-                            {p.size}
-                          </span>
-                        </div>
-                      )}
+                      <span
+                        className={`font-black tracking-tight select-none group-hover:scale-105 transition-transform duration-300 ${
+                          getProductInitial(p).length <= 2
+                            ? 'text-5xl sm:text-6xl'
+                            : 'text-4xl sm:text-5xl'
+                        } ${
+                          p.category === 'sticker'
+                            ? 'text-fuchsia-300'
+                            : p.category === 'frame'
+                            ? 'text-sky-300'
+                            : 'text-amber-300'
+                        }`}
+                      >
+                        {getProductInitial(p)}
+                      </span>
 
                       {/* Top-Right Action: (+) Add Button vs Interactive ([-] Qty [+]) Stepper */}
                       <div className="absolute top-2.5 right-2.5 z-10">

@@ -8,7 +8,6 @@ import {
   Power,
   Sparkles,
   Layers,
-  Image as ImageIcon,
   Check,
   X,
   ArrowLeft,
@@ -16,7 +15,7 @@ import {
 import { useToast } from '../context/ToastContext';
 import { useCatalog } from '../context/CatalogContext';
 import { ProductModal } from '../components/ProductModal';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, getProductInitial } from '../utils/formatters';
 import { api } from '../api/client';
 
 export const Products = ({ onNavigate }) => {
@@ -201,14 +200,18 @@ export const Products = ({ onNavigate }) => {
                   >
                     <td className="py-3 font-medium">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-11 rounded-lg overflow-hidden bg-zinc-900 shrink-0 border border-zinc-800">
-                          {p.image ? (
-                            <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-zinc-500 text-base">
-                              {p.category === 'sticker' ? '✨' : p.category === 'frame' ? '🔲' : <ImageIcon className="w-4 h-4" />}
-                            </div>
-                          )}
+                        <div className="w-9 h-11 rounded-lg bg-zinc-900 shrink-0 border border-zinc-800 flex items-center justify-center">
+                          <span
+                            className={`font-black tracking-tight text-[11px] ${
+                              p.category === 'sticker'
+                                ? 'text-fuchsia-300'
+                                : p.category === 'frame'
+                                ? 'text-sky-300'
+                                : 'text-amber-300'
+                            }`}
+                          >
+                            {getProductInitial(p)}
+                          </span>
                         </div>
                         <div>
                           <span className="font-bold text-white block">

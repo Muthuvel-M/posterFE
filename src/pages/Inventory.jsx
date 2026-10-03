@@ -12,7 +12,7 @@ import { useToast } from '../context/ToastContext';
 import { useCatalog } from '../context/CatalogContext';
 import { RestockModal } from '../components/RestockModal';
 import { ProductModal } from '../components/ProductModal';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, getProductInitial } from '../utils/formatters';
 import { api } from '../api/client';
 
 export const Inventory = () => {
@@ -181,12 +181,18 @@ export const Inventory = () => {
                 <div className="flex items-center gap-3 min-w-0">
                   <GripVertical className="w-4 h-4 text-zinc-600 group-hover:text-zinc-400 shrink-0" />
 
-                  <div className="w-11 h-11 rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800 shrink-0 flex items-center justify-center">
-                    {p.image ? (
-                      <img src={p.image} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
-                    ) : (
-                      <Package className="w-5 h-5 text-zinc-500" />
-                    )}
+                  <div className="w-11 h-11 rounded-xl bg-zinc-900 border border-zinc-800 shrink-0 flex items-center justify-center">
+                    <span
+                      className={`font-black tracking-tight ${
+                        p.category === 'sticker'
+                          ? 'text-fuchsia-300 text-sm'
+                          : p.category === 'frame'
+                          ? 'text-sky-300 text-sm'
+                          : 'text-amber-300 text-sm'
+                      }`}
+                    >
+                      {getProductInitial(p)}
+                    </span>
                   </div>
 
                   <div className="min-w-0">

@@ -1,4 +1,40 @@
 /**
+ * Short label for product tiles (size / sticker price) instead of images.
+ * Posters/frames → A4, A5, A6; Stickers → 15, 30.
+ */
+export const getProductInitial = (product) => {
+  if (!product) return '?';
+  const size = String(product.size || '').trim();
+  const name = String(product.name || '').trim();
+  const category = String(product.category || '').toLowerCase();
+  const combined = `${size} ${name}`;
+
+  if (category.includes('sticker')) {
+    const fromSize = size.replace(/[₹rs.\s]/gi, '');
+    if (/^(15|30)$/.test(fromSize)) return fromSize;
+    const nameMatch = combined.match(/\b(15|30)\b/);
+    if (nameMatch) return nameMatch[1];
+    if (product.sellPrice === 15 || product.sellPrice === 30) {
+      return String(product.sellPrice);
+    }
+  }
+
+  const paperMatch = combined.match(/\b(A[3-6])\b/i);
+  if (paperMatch) return paperMatch[1].toUpperCase();
+
+  if (size) {
+    const cleaned = size.replace(/^₹\s?/, '').trim();
+    if (cleaned) return cleaned.toUpperCase();
+  }
+
+  const words = name.split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    return `${words[0][0]}${words[1][0]}`.toUpperCase();
+  }
+  return (name.slice(0, 3) || '?').toUpperCase();
+};
+
+/**
  * Formats a number into Indian Rupee Currency string
  * Example: formatCurrency(1250) => ₹1,250
  */
