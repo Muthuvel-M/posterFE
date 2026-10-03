@@ -15,6 +15,15 @@
   }
 }
 
+/* Clear iOS / Android status bar on all screens (viewport-fit=cover) */
+.app-safe-top {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 1.5rem);
+}
+
+.app-safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 /* Pitch Dark Surfaces & Utilities */
 .dark-card {
   @apply bg-[#151518] border border-zinc-800/80 rounded-3xl shadow-lg;

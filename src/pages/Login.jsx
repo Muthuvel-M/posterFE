@@ -175,7 +175,7 @@ export const Login = () => {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-[#0e0e13] to-slate-950 relative overflow-hidden">
+    <div className="min-h-screen w-full flex items-center justify-center p-4 app-safe-top bg-gradient-to-br from-slate-900 via-[#0e0e13] to-slate-950 relative overflow-hidden">
       {/* Background Decorative Gradients & Glows */}
       <div className="absolute -top-40 -left-40 w-96 h-96 bg-rose-500/15 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-amber-600/15 rounded-full blur-3xl pointer-events-none" />

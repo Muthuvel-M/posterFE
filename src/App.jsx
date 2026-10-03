@@ -50,7 +50,7 @@ const MainLayout = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-[#0c0c0e]">
+      <div className="min-h-screen w-full flex items-center justify-center bg-[#0c0c0e] app-safe-top">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
           <span className="text-xs font-bold text-zinc-400">Loading AuraFrame POS...</span>
@@ -65,8 +65,8 @@ const MainLayout = () => {
 
   return (
     <div className="min-h-screen bg-[#0c0c0e] text-slate-100 flex flex-col selection:bg-amber-400 selection:text-black">
-      {/* Main Screen Router */}
-      <main className="flex-1 w-full pt-6 sm:pt-6">
+      {/* Main Screen Router — safe-area clears status bar on all tabs */}
+      <main className="flex-1 w-full app-safe-top">
         <ErrorBoundary onNavigateHome={() => setActiveTab('home')}>
           <div key={activeTab} className="animate-tab-slide">
             {activeTab === 'home' && (

@@ -14,7 +14,7 @@ export const BottomNav = ({ activeTab, setActiveTab }) => {
   ];
 
   return (
-    <div className="fixed bottom-4 left-0 right-0 z-40 flex justify-center px-4 no-print pointer-events-none">
+    <div className="fixed bottom-4 left-0 right-0 z-40 flex justify-center px-4 no-print pointer-events-none app-safe-bottom">
       <div className="pointer-events-auto bg-[#141417]/95 backdrop-blur-xl border border-zinc-800/90 rounded-full px-3 py-1.5 shadow-2xl flex items-center justify-between gap-1 sm:gap-4 max-w-md w-full relative animate-bottombar-slide">
         {navItems.map((item) => {
           if (item.isFab) {

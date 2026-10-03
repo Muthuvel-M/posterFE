@@ -126,6 +126,31 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
     setCostPrice(presetPrice === 15 ? 5 : 10);
   };
 
+  const handleSelectSize = (selectedSize) => {
+    setSize(selectedSize);
+    const cat = category.toLowerCase();
+    if (cat.includes('frame')) {
+      if (selectedSize === 'A4') {
+        setSellPrice(180);
+        setCostPrice(80);
+      } else if (selectedSize === 'A5') {
+        setSellPrice(140);
+        setCostPrice(65);
+      }
+    } else if (!cat.includes('sticker')) {
+      if (selectedSize === 'A4') {
+        setSellPrice(40);
+        setCostPrice(15);
+      } else if (selectedSize === 'A5') {
+        setSellPrice(25);
+        setCostPrice(10);
+      } else if (selectedSize === 'A6') {
+        setSellPrice(20);
+        setCostPrice(8);
+      }
+    }
+  };
+
   const handleAddComboTier = () => {
     const nextQty = comboTiers.length === 0 ? 3 : comboTiers[comboTiers.length - 1].minQty + 2;
     const nextPrice = Number(sellPrice) > 0 ? (Number(sellPrice) * nextQty * 0.85).toFixed(0) : 100;
@@ -347,6 +372,38 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
                 >
                   <span>🌟 ₹30 Sticker</span>
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* Size Selector for Poster / Frame */}
+          {!category.toLowerCase().includes('sticker') && (
+            <div className="p-3.5 rounded-2xl bg-[#1c1c22] border border-zinc-800 space-y-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block">
+                SIZE *
+              </span>
+              <div
+                className={`grid gap-2 ${
+                  category.toLowerCase().includes('frame') ? 'grid-cols-2' : 'grid-cols-3'
+                }`}
+              >
+                {(category.toLowerCase().includes('frame')
+                  ? ['A4', 'A5']
+                  : ['A4', 'A5', 'A6']
+                ).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => handleSelectSize(s)}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                      size === s
+                        ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
+                        : 'bg-zinc-900 border border-zinc-700 text-zinc-300 hover:text-white'
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
               </div>
             </div>
           )}
