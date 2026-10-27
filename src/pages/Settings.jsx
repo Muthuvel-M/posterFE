@@ -28,6 +28,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { api } from '../api/client';
+import { DEFAULT_FREE_OFFER, normalizeFreeOffer } from '../utils/freeOffer';
 import {
   ALLOCATION_KEYS,
   ALLOCATION_LABELS,
@@ -63,6 +64,7 @@ export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNaviga
     quickSaleAi: false,
     floatingCalculator: false,
     lowStockThreshold: 5,
+    freeOffer: DEFAULT_FREE_OFFER,
   });
 
   const [incomeSplit, setIncomeSplit] = useState({ ...DEFAULT_INCOME_SPLIT });
@@ -86,6 +88,7 @@ export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNaviga
         currency: settings.currency || 'INR',
         receiptFooterNote: settings.receiptFooterNote || 'Thank you for shopping!',
         lowStockThreshold: settings.lowStockThreshold || 5,
+        freeOffer: normalizeFreeOffer(settings.freeOffer),
       }));
       if (settings.incomeSplit) {
         setIncomeSplit({
@@ -151,9 +154,14 @@ export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNaviga
       showToast('Invalid UPI ID format. Expected format: name@bank (e.g. store@okhdfcbank)', 'error');
       return;
     }
+    const freeOffer = normalizeFreeOffer(formData.freeOffer);
+    if (freeOffer.tiers.some((tier) => tier.buyQty <= tier.freeQty)) {
+      showToast('Buy quantity must be greater than the free quantity', 'error');
+      return;
+    }
     try {
       setSubmitting(true);
-      const res = await api.updateSettings(formData);
+      const res = await api.updateSettings({ ...formData, freeOffer });
       if (res.success) {
         showToast('Settings saved successfully', 'success');
         if (onSettingsUpdated) onSettingsUpdated(res.data);
@@ -544,9 +552,9 @@ export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNaviga
 
         <div className="p-4 rounded-3xl bg-[#1c1c22] border border-zinc-800/80 space-y-3 shadow-lg">
           <p className="text-[11px] text-zinc-400 leading-relaxed">
-            Equal split only — all four must be the same percentage and total 100%
-            (25% each). Applied to Fri–Sat–Sun income after each weekend; inactive days
-            are excluded from the pool.
+            Set each share on its own. The four percentages must add up to 100%, and a
+            value that would go over 100% is not accepted. Applied to Fri–Sat–Sun income
+            after each weekend; inactive days are excluded from the pool.
           </p>
 
           {ALLOCATION_KEYS.map((key) => (
@@ -566,8 +574,16 @@ export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNaviga
                     step={0.01}
                     value={incomeSplit[key]}
                     onChange={(e) => {
-                      const next = e.target.value === '' ? 0 : Number(e.target.value);
-                      setIncomeSplit(buildEqualSplit(next));
+                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                      if (Number.isNaN(raw) || raw < 0) return;
+                      const others = ALLOCATION_KEYS.reduce(
+                        (sum, allocationKey) =>
+                          allocationKey === key ? sum : sum + (Number(incomeSplit[allocationKey]) || 0),
+                        0
+                      );
+                      const maxAllowed = Math.max(0, Math.round((100 - others) * 100) / 100);
+                      const next = Math.min(raw, maxAllowed);
+                      setIncomeSplit({ ...incomeSplit, [key]: next });
                     }}
                     className="w-20 px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-sm font-mono text-right text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
                   />
@@ -634,6 +650,83 @@ export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNaviga
           </div>
 
           <ChevronRight className="w-4 h-4 text-zinc-400 group-hover:translate-x-0.5 transition-transform" />
+        </div>
+      </div>
+
+      <div className="space-y-2 animate-card-in stagger-5">
+        <h2 className="text-[11px] font-black uppercase tracking-widest text-zinc-400 px-1">
+          FREE OFFER
+        </h2>
+
+        <div className="p-4 rounded-3xl bg-[#1c1c22] border border-zinc-800/80 space-y-4 shadow-lg">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs sm:text-sm font-semibold text-white">Same-size free offer</p>
+              <p className="text-[11px] text-zinc-400">Buy 4 get 1, and the other tiers, only within one size</p>
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                setFormData({
+                  ...formData,
+                  freeOffer: {
+                    ...normalizeFreeOffer(formData.freeOffer),
+                    enabled: !normalizeFreeOffer(formData.freeOffer).enabled,
+                  },
+                })
+              }
+              className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
+                formData.freeOffer?.enabled ? 'bg-amber-400' : 'bg-zinc-800'
+              }`}
+            >
+              <span
+                className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${
+                  formData.freeOffer?.enabled ? 'left-6' : 'left-1'
+                }`}
+              />
+            </button>
+          </div>
+
+          {(formData.freeOffer?.tiers || DEFAULT_FREE_OFFER.tiers).map((tier, index) => (
+            <div key={index} className="grid grid-cols-2 gap-2">
+              <label className="block">
+                <span className="text-[10px] font-bold uppercase text-zinc-500">Buy</span>
+                <input
+                  type="number"
+                  min="1"
+                  value={tier.buyQty}
+                  onChange={(e) => {
+                    const tiers = normalizeFreeOffer(formData.freeOffer).tiers.map((entry, i) =>
+                      i === index ? { ...entry, buyQty: Math.max(1, Number(e.target.value) || 1) } : entry
+                    );
+                    setFormData({
+                      ...formData,
+                      freeOffer: { ...normalizeFreeOffer(formData.freeOffer), tiers },
+                    });
+                  }}
+                  className="mt-1 w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </label>
+              <label className="block">
+                <span className="text-[10px] font-bold uppercase text-zinc-500">Free</span>
+                <input
+                  type="number"
+                  min="1"
+                  value={tier.freeQty}
+                  onChange={(e) => {
+                    const tiers = normalizeFreeOffer(formData.freeOffer).tiers.map((entry, i) =>
+                      i === index ? { ...entry, freeQty: Math.max(1, Number(e.target.value) || 1) } : entry
+                    );
+                    setFormData({
+                      ...formData,
+                      freeOffer: { ...normalizeFreeOffer(formData.freeOffer), tiers },
+                    });
+                  }}
+                  className="mt-1 w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </label>
+            </div>
+          ))}
         </div>
       </div>
 

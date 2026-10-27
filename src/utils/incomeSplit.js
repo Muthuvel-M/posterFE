@@ -1,6 +1,6 @@
 /**
  * Client-side income-split helpers (mirrors PosterBE incomeSplitService).
- * All four allocations must be equal and sum to 100 (25% each by default).
+ * The four allocations can differ, but they must sum to 100.
  */
 
 export const ALLOCATION_KEYS = ['reinvestment', 'ps5Fund', 'savings', 'expenses'];
@@ -42,7 +42,6 @@ export function validatePercentages(percentages) {
   if (!percentages || typeof percentages !== 'object') {
     return { valid: false, sum: 0, message: 'Percentages are required' };
   }
-  const values = [];
   let sum = 0;
   for (const key of ALLOCATION_KEYS) {
     const val = Number(percentages[key]);
@@ -53,16 +52,14 @@ export function validatePercentages(percentages) {
         message: `${ALLOCATION_LABELS[key] || key} must be between 0 and 100`,
       };
     }
-    values.push(val);
     sum += val;
   }
   sum = Math.round(sum * 100) / 100;
-  const first = values[0];
-  if (!values.every((v) => Math.abs(v - first) <= 0.01)) {
+  if (sum > 100.01) {
     return {
       valid: false,
       sum,
-      message: 'All four allocations must be equal (e.g. 25% each)',
+      message: `Percentages cannot be more than 100 (currently ${sum}%)`,
     };
   }
   if (Math.abs(sum - 100) > 0.01) {
@@ -76,7 +73,7 @@ export function validatePercentages(percentages) {
 }
 
 /**
- * Even paise split across four equal buckets; leftover paise distributed round-robin.
+ * Splits income by each percentage. Leftover paise go to the largest fractional shares.
  * @param {number} totalIncome
  * @param {Object} percentages
  * @returns {Object|null}
@@ -86,15 +83,22 @@ export function computeAllocations(totalIncome, percentages) {
   if (!check.valid) return null;
 
   const totalPaise = Math.round(Number(totalIncome) * 100);
-  const n = ALLOCATION_KEYS.length;
-  const base = Math.floor(totalPaise / n);
-  let remainder = totalPaise - base * n;
-  const result = {};
+  const shares = ALLOCATION_KEYS.map((key) => {
+    const exact = totalPaise * (Number(percentages[key]) / 100);
+    const floor = Math.floor(exact + 1e-9);
+    return { key, floor, frac: exact - floor };
+  });
+  let remainder = totalPaise - shares.reduce((sum, share) => sum + share.floor, 0);
+  const byFraction = [...shares].sort((a, b) => b.frac - a.frac);
+  for (const share of byFraction) {
+    if (remainder <= 0) break;
+    share.floor += 1;
+    remainder -= 1;
+  }
 
-  for (let i = 0; i < n; i++) {
-    const extra = remainder > 0 ? 1 : 0;
-    if (remainder > 0) remainder -= 1;
-    result[ALLOCATION_KEYS[i]] = (base + extra) / 100;
+  const result = {};
+  for (const share of shares) {
+    result[share.key] = share.floor / 100;
   }
   return result;
 }

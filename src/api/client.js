@@ -177,6 +177,8 @@ export const api = {
   },
   settleIncomeSplit: (data = {}) =>
     request('/income-splits/settle', { method: 'POST', body: JSON.stringify(data) }),
+  resetIncomeSplitAmounts: () =>
+    request('/income-splits/reset-amounts', { method: 'POST', body: JSON.stringify({}) }),
   getIncomeSplits: (params = {}) => {
     const query = new URLSearchParams(params).toString();
     return request(`/income-splits${query ? `?${query}` : ''}`);

@@ -13,6 +13,7 @@ import {
   Layers,
   Check,
   TrendingUp,
+  RotateCcw,
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { formatCurrency, formatWeekendRange } from '../utils/formatters';
@@ -71,6 +72,7 @@ export const IncomeSplits = ({ onNavigate }) => {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [settling, setSettling] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -116,6 +118,22 @@ export const IncomeSplits = ({ onNavigate }) => {
       setSelectedYear((prev) => prev + 1);
     } else {
       setSelectedMonth((prev) => prev + 1);
+    }
+  };
+
+  const handleResetSplit = async () => {
+    if (!window.confirm('Reset weekend income amounts to 0? Percentages stay the same.')) return;
+    try {
+      setResetting(true);
+      const res = await api.resetIncomeSplitAmounts();
+      if (res.success) {
+        showToast('Weekend income amounts reset to 0', 'success');
+        await loadData();
+      }
+    } catch (err) {
+      showToast(err.message || 'Failed to reset amounts', 'error');
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -281,7 +299,7 @@ export const IncomeSplits = ({ onNavigate }) => {
                         className="p-2.5 rounded-xl bg-zinc-900/80 border border-zinc-800/80 flex items-center justify-between"
                       >
                         <span className="text-[11px] font-semibold text-zinc-400">
-                          {ALLOCATION_LABELS[key]} (25%)
+                          {ALLOCATION_LABELS[key]} ({monthWeekendData?.weeks?.[0]?.percentages?.[key] ?? 25}%)
                         </span>
                         <span className="text-xs font-black text-amber-400">
                           {formatCurrency(monthWeekendData.monthAllocations[key] || 0)}
@@ -290,6 +308,16 @@ export const IncomeSplits = ({ onNavigate }) => {
                     ))}
                   </div>
                 )}
+
+                <button
+                  type="button"
+                  disabled={resetting}
+                  onClick={handleResetSplit}
+                  className="w-full py-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-xs font-black text-zinc-200 hover:text-white hover:border-zinc-500 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <RotateCcw className={`w-3.5 h-3.5 ${resetting ? 'animate-spin' : ''}`} />
+                  {resetting ? 'Resetting…' : 'Reset amounts'}
+                </button>
               </div>
 
               {/* Weeks Filter Tabs (All 4 Weeks + Individual Week Pills) */}
@@ -502,7 +530,7 @@ export const IncomeSplits = ({ onNavigate }) => {
                       <div className="space-y-2 pt-2 border-t border-zinc-800">
                         <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-zinc-400">
                           <PieChart className="w-3.5 h-3.5" />
-                          4-Way Allocation Breakdown (25% each)
+                          4-Way Allocation Breakdown
                         </div>
                         {ALLOCATION_KEYS.map((key) => {
                           const amount = activeWeekPreview.allocations[key] || 0;
@@ -607,7 +635,7 @@ export const IncomeSplits = ({ onNavigate }) => {
                         className="p-2.5 rounded-xl bg-zinc-900/80 border border-zinc-800/80 flex items-center justify-between"
                       >
                         <span className="text-[11px] font-semibold text-zinc-400">
-                          {ALLOCATION_LABELS[key]} (25%)
+                          {ALLOCATION_LABELS[key]} ({monthDailyData?.percentages?.[key] ?? 25}%)
                         </span>
                         <span className="text-xs font-black text-amber-400">
                           {formatCurrency(monthDailyData.monthAllocations[key] || 0)}

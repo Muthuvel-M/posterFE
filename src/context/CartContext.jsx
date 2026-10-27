@@ -44,6 +44,7 @@ export const CartProvider = ({ children }) => {
           {
             product,
             qty,
+            freeQty: 0,
             sellPrice: product.sellPrice,
             costPrice: product.costPrice,
           },
@@ -56,24 +57,40 @@ export const CartProvider = ({ children }) => {
     setCartItems((prev) => prev.filter((item) => item.product._id !== productId));
   };
 
-  const updateQty = (productId, newQty) => {
-    if (newQty <= 0) {
+  const updateQty = (productId, newPaidQty) => {
+    if (newPaidQty <= 0) {
       removeFromCart(productId);
       return;
     }
 
     setCartItems((prev) => {
       return prev.map((item) => {
-        if (item.product._id === productId) {
-          if (newQty > item.product.stock) {
-            showToast(`Max available stock is ${item.product.stock}`, 'error');
-            return { ...item, qty: item.product.stock };
-          }
-          return { ...item, qty: newQty };
+        if (item.product._id !== productId) return item;
+        const freeQty = Number(item.freeQty) || 0;
+        const maxPaid = Math.max(0, item.product.stock - freeQty);
+        if (newPaidQty > maxPaid) {
+          showToast(`Max available stock is ${item.product.stock}`, 'error');
+          return { ...item, qty: maxPaid + freeQty, freeQty };
         }
-        return item;
+        return { ...item, qty: newPaidQty + freeQty, freeQty };
       });
     });
+  };
+
+  const setFreeQty = (productId, nextFreeQty) => {
+    const freeQty = Math.max(0, Number(nextFreeQty) || 0);
+    setCartItems((prev) =>
+      prev.map((item) => {
+        if (item.product._id !== productId) return item;
+        const paid = Math.max(0, item.qty - (Number(item.freeQty) || 0));
+        const nextQty = paid + freeQty;
+        if (nextQty > item.product.stock) {
+          showToast(`Only ${item.product.stock} in stock for "${item.product.name}"`, 'error');
+          return item;
+        }
+        return { ...item, qty: nextQty, freeQty };
+      })
+    );
   };
 
   const updateCustomPrice = (productId, price) => {
@@ -92,24 +109,30 @@ export const CartProvider = ({ children }) => {
   };
 
   // Calculations
-  const { subtotal, estimatedCost, estimatedProfit, total, itemCount, marginPct } = useMemo(() => {
-    let sub = 0;
+  const { subtotal, grossSubtotal, freeDiscount, estimatedCost, estimatedProfit, total, itemCount, marginPct } = useMemo(() => {
+    let paidSub = 0;
+    let freeValue = 0;
     let cost = 0;
     let count = 0;
 
     cartItems.forEach((item) => {
-      sub += item.sellPrice * item.qty;
+      const freeQty = Number(item.freeQty) || 0;
+      const paid = Math.max(0, item.qty - freeQty);
+      paidSub += item.sellPrice * paid;
+      freeValue += item.sellPrice * freeQty;
       cost += item.product.costPrice * item.qty;
       count += item.qty;
     });
 
-    const disc = Math.min(sub, Math.max(0, Number(discount) || 0));
-    const tot = Math.max(0, sub - disc);
-    const profit = Math.max(0, (sub - cost) - disc);
+    const disc = Math.min(paidSub, Math.max(0, Number(discount) || 0));
+    const tot = Math.max(0, paidSub - disc);
+    const profit = Math.max(0, (paidSub - cost) - disc);
     const margin = tot > 0 ? Number(((profit / tot) * 100).toFixed(1)) : 0;
 
     return {
-      subtotal: sub,
+      subtotal: paidSub,
+      grossSubtotal: paidSub + freeValue,
+      freeDiscount: freeValue,
       estimatedCost: cost,
       estimatedProfit: profit,
       total: tot,
@@ -148,6 +171,8 @@ export const CartProvider = ({ children }) => {
         discount,
         notes,
         subtotal,
+        grossSubtotal,
+        freeDiscount,
         estimatedCost,
         estimatedProfit,
         total,
@@ -159,6 +184,7 @@ export const CartProvider = ({ children }) => {
         addToCart,
         removeFromCart,
         updateQty,
+        setFreeQty,
         updateCustomPrice,
         setDiscount,
         setCustomer,

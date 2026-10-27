@@ -18,6 +18,7 @@ import { useCart } from '../context/CartContext';
 import { useCatalog } from '../context/CatalogContext';
 import { useToast } from '../context/ToastContext';
 import { formatCurrency, getProductInitial } from '../utils/formatters';
+import { freeGroupKey, normalizeFreeOffer, paidQtyOf } from '../utils/freeOffer';
 import { api } from '../api/client';
 
 const PERCENT_DISCOUNTS = [
@@ -48,13 +49,17 @@ export const Checkout = ({
     addToCart,
     removeFromCart,
     updateQty,
+    setFreeQty,
     setDiscount,
+    grossSubtotal,
+    freeDiscount,
     setCustomer,
     clearCart,
     openPayModal,
   } = useCart();
 
-  const { products, isSyncing, refreshCatalog } = useCatalog();
+  const { products, isSyncing, refreshCatalog, settings } = useCatalog();
+  const freeOffer = normalizeFreeOffer(settings?.freeOffer);
   const { showToast } = useToast();
 
   // Wizard Steps
@@ -92,8 +97,31 @@ export const Checkout = ({
 
   const getCartItemQty = (productId) => {
     const found = cartItems.find((item) => item.product._id === productId);
-    return found ? found.qty : 0;
+    return found ? paidQtyOf(found) : 0;
   };
+
+  const getCartFreeQty = (productId) => {
+    const found = cartItems.find((item) => item.product._id === productId);
+    return found ? Number(found.freeQty) || 0 : 0;
+  };
+
+  useEffect(() => {
+    const paidByGroup = {};
+    cartItems.forEach((item) => {
+      const key = freeGroupKey(item);
+      paidByGroup[key] = (paidByGroup[key] || 0) + paidQtyOf(item);
+    });
+
+    cartItems.forEach((item) => {
+      const freeQty = Number(item.freeQty) || 0;
+      if (!freeQty) return;
+      const tier = freeOffer.tiers.find((entry) => entry.freeQty === freeQty);
+      const groupPaid = paidByGroup[freeGroupKey(item)] || 0;
+      if (!freeOffer.enabled || !tier || groupPaid < tier.buyQty) {
+        setFreeQty(item.product._id, 0);
+      }
+    });
+  }, [cartItems, freeOffer.enabled, settings?.freeOffer, setFreeQty]);
 
   const handleToggleDiscountMode = (mode) => {
     if (mode === discountMode) return;
@@ -116,6 +144,56 @@ export const Checkout = ({
         : chip.amount;
     setDiscount(next);
   };
+
+  const pickFreeTarget = (items) =>
+    [...items].sort((a, b) => {
+      const paidDiff = paidQtyOf(b) - paidQtyOf(a);
+      if (paidDiff !== 0) return paidDiff;
+      return (Number(a.sellPrice) || 0) - (Number(b.sellPrice) || 0);
+    })[0];
+
+  const handleFreeChip = (group, tier) => {
+    const appliedFree = group.items.reduce((sum, item) => sum + (Number(item.freeQty) || 0), 0);
+    if (appliedFree === tier.freeQty) {
+      group.items.forEach((item) => {
+        if (item.freeQty) setFreeQty(item.product._id, 0);
+      });
+      return;
+    }
+
+    const target = pickFreeTarget(group.items);
+    if (!target) return;
+    if (paidQtyOf(target) + tier.freeQty > target.product.stock) {
+      showToast('Not enough stock to add the free pieces', 'error');
+      return;
+    }
+
+    group.items.forEach((item) => {
+      if (item.product._id !== target.product._id && item.freeQty) {
+        setFreeQty(item.product._id, 0);
+      }
+    });
+    setFreeQty(target.product._id, tier.freeQty);
+  };
+
+  const freeGroups = [];
+  const freeGroupIndex = {};
+  cartItems.forEach((item) => {
+    const key = freeGroupKey(item);
+    if (freeGroupIndex[key] == null) {
+      freeGroupIndex[key] = freeGroups.length;
+      freeGroups.push({
+        key,
+        size: item.product.size || 'Standard',
+        category: item.product.category || 'poster',
+        items: [],
+        paid: 0,
+      });
+    }
+    const group = freeGroups[freeGroupIndex[key]];
+    group.items.push(item);
+    group.paid += paidQtyOf(item);
+  });
 
   const handleProceedToReview = () => {
     if (cartItems.length === 0) {
@@ -286,6 +364,7 @@ export const Checkout = ({
             <div key={categoryFilter} className="grid grid-cols-2 gap-3 sm:gap-3.5 animate-card-in stagger-3">
               {filteredProducts.map((p, idx) => {
                 const inCartQty = getCartItemQty(p._id);
+                const freeQty = getCartFreeQty(p._id);
                 const isOutOfStock = p.stock <= 0;
 
                 return (
@@ -376,6 +455,9 @@ export const Checkout = ({
                       <h3 className="text-xs sm:text-[13px] font-extrabold text-white truncate group-hover:text-amber-300 transition-colors">
                         {p.name}
                       </h3>
+                      {freeQty > 0 && (
+                        <p className="text-[10px] font-bold text-emerald-400">+{freeQty} free</p>
+                      )}
 
                       <div className="flex items-baseline justify-between pt-0.5">
                         <span className="text-sm sm:text-base font-black text-amber-400 tracking-tight">
@@ -424,6 +506,7 @@ export const Checkout = ({
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
                     {itemCount} {itemCount === 1 ? 'item' : 'items'} selected
+                    {freeDiscount > 0 ? ' · free applied' : ''}
                   </span>
                   <div className="text-lg sm:text-xl font-black text-white tracking-tight">
                     Subtotal: {formatCurrency(subtotal)}
@@ -491,13 +574,14 @@ export const Checkout = ({
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-white truncate">{item.product.name}</p>
                     <p className="text-[11px] text-zinc-400">
-                      {formatCurrency(item.sellPrice)} × {item.qty} ({item.product.size || 'Standard'})
+                      {formatCurrency(item.sellPrice)} × {paidQtyOf(item)}
+                      {(item.freeQty || 0) > 0 ? ` + ${item.freeQty} free` : ''} ({item.product.size || 'Standard'})
                     </p>
                   </div>
 
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold text-white">
-                      {formatCurrency(item.sellPrice * item.qty)}
+                      {formatCurrency(item.sellPrice * paidQtyOf(item))}
                     </span>
                     <button
                       onClick={() => removeFromCart(item.product._id)}
@@ -515,9 +599,15 @@ export const Checkout = ({
               <div className="flex justify-between text-zinc-400">
                 <span>Subtotal</span>
                 <span className="font-mono font-semibold text-white">
-                  {formatCurrency(subtotal)}
+                  {formatCurrency(grossSubtotal)}
                 </span>
               </div>
+              {freeDiscount > 0 && (
+                <div className="flex justify-between text-emerald-400 font-semibold">
+                  <span>Free</span>
+                  <span className="font-mono">-{formatCurrency(freeDiscount)}</span>
+                </div>
+              )}
               {discount > 0 && (
                 <div className="flex justify-between text-emerald-400 font-semibold">
                   <span>Discount</span>
@@ -563,6 +653,62 @@ export const Checkout = ({
               />
             </div>
           </div>
+
+          {freeOffer.enabled && freeGroups.some((group) => group.paid >= 5) && (
+            <div className="p-5 rounded-3xl bg-[#1a1b22] border border-zinc-800 space-y-3 shadow-xl animate-card-in stagger-4">
+              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 block">
+                Free offer
+              </span>
+              {freeGroups.filter((group) => group.paid >= 5).map((group) => (
+                <div key={group.key} className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-black text-white uppercase">
+                      {group.size} {group.category}
+                    </span>
+                    <span className="text-[11px] font-semibold text-zinc-400">
+                      {group.paid} paid
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {freeOffer.tiers.map((tier, tierIndex) => {
+                      const target = pickFreeTarget(group.items);
+                      const stockOk = target
+                        && paidQtyOf(target) + tier.freeQty <= target.product.stock;
+                      const eligible = group.paid >= tier.buyQty && stockOk;
+                      const appliedFree = group.items.reduce(
+                        (sum, item) => sum + (Number(item.freeQty) || 0),
+                        0
+                      );
+                      const selected = appliedFree === tier.freeQty;
+                      return (
+                        <button
+                          key={`${group.key}-${tierIndex}`}
+                          type="button"
+                          disabled={!eligible && !selected}
+                          onClick={() => (eligible || selected ? handleFreeChip(group, tier) : undefined)}
+                          title={
+                            eligible || selected
+                              ? `Buy ${tier.buyQty}, get ${tier.freeQty} free`
+                              : `Needs ${tier.buyQty} paid ${group.size}`
+                          }
+                          className={`py-3 px-2 rounded-xl text-xs font-black transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-35 ${
+                            selected
+                              ? 'bg-emerald-400 text-zinc-950 shadow-md shadow-emerald-400/20'
+                              : 'bg-[#151518] text-zinc-300 border border-zinc-800 hover:text-white'
+                          }`}
+                        >
+                          <span className="block">{tier.freeQty} free</span>
+                          <span className={`block text-[10px] font-semibold mt-0.5 ${selected ? 'text-zinc-800' : 'text-zinc-500'}`}>
+                            buy {tier.buyQty}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Card 3: DISCOUNT */}
           <div className="p-5 rounded-3xl bg-[#1a1b22] border border-zinc-800 space-y-3 shadow-xl animate-card-in stagger-4">
