@@ -43,6 +43,7 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
   const [loadingAction, setLoadingAction] = useState(null); // 'init' | 'mark_paid' | 'cash'
   const paymentCompletedRef = useRef(false);
   const initInFlightRef = useRef(false);
+  const attemptIdRef = useRef(0);
 
   const rawUpiId = settings?.upiId?.trim() || 'mmuthuvel126@ibl';
   const isUpiConfigured = Boolean(rawUpiId && UPI_REGEX.test(rawUpiId));
@@ -71,8 +72,19 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-init when modal opens or payable total changes before payment
   }, [isPayModalOpen, total]);
 
+  const discardSaleIfUnpaid = async (saleId) => {
+    if (!saleId || paymentCompletedRef.current) return;
+    try {
+      await api.deleteSale(saleId);
+    } catch (err) {
+      console.warn('Failed to discard unpaid sale:', err);
+    }
+  };
+
   const initSaleFlow = async () => {
     if (paymentCompletedRef.current || initInFlightRef.current) return;
+    const attemptId = ++attemptIdRef.current;
+    const previousSaleId = activeSale?._id;
     try {
       initInFlightRef.current = true;
       setLoadingAction('init');
@@ -93,19 +105,44 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
       };
 
       const res = await api.createSale(payload);
-      if (paymentCompletedRef.current) return;
+      const abandoned = attemptId !== attemptIdRef.current || paymentCompletedRef.current;
+      if (abandoned) {
+        if (!paymentCompletedRef.current && res?.success && res.data?._id) {
+          await discardSaleIfUnpaid(res.data._id);
+        }
+        return;
+      }
       if (res.success && res.data) {
         setActiveSale(res.data);
+        if (previousSaleId && previousSaleId !== res.data._id) {
+          discardSaleIfUnpaid(previousSaleId);
+        }
       }
     } catch (err) {
-      if (!paymentCompletedRef.current) {
+      if (!paymentCompletedRef.current && attemptId === attemptIdRef.current) {
         showToast(err.message || 'Failed to initialize sale', 'error');
       }
     } finally {
-      initInFlightRef.current = false;
-      if (!paymentCompletedRef.current) {
-        setLoadingAction(null);
+      if (attemptId === attemptIdRef.current) {
+        initInFlightRef.current = false;
+        if (!paymentCompletedRef.current) {
+          setLoadingAction(null);
+        }
       }
+    }
+  };
+
+  const handleDismissUnpaid = () => {
+    if (paymentCompletedRef.current) {
+      requestClose();
+      return;
+    }
+    attemptIdRef.current += 1;
+    initInFlightRef.current = false;
+    const saleId = activeSale?._id;
+    requestClose();
+    if (saleId) {
+      discardSaleIfUnpaid(saleId);
     }
   };
 
@@ -202,10 +239,13 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
   const handleStartNewSale = () => {
     requestClose();
     clearCart();
+    if (onNavigate) {
+      onNavigate('sales');
+    }
   };
 
   const handleGoToSettings = () => {
-    requestClose();
+    handleDismissUnpaid();
     if (onNavigate) {
       onNavigate('settings');
     }
@@ -298,7 +338,7 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
       className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/85 backdrop-blur-md no-print ${
         isClosing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop-in'
       }`}
-      onClick={requestClose}
+      onClick={handleDismissUnpaid}
     >
       <div
         className={`w-full max-w-md rounded-t-[32px] sm:rounded-[32px] bg-[#141417] border border-zinc-800/90 shadow-2xl overflow-hidden text-white ${
@@ -319,7 +359,7 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
           </div>
 
           <button
-            onClick={requestClose}
+            onClick={handleDismissUnpaid}
             className="p-1.5 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
             title="Cancel"
           >
@@ -447,7 +487,7 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
 
               <button
                 type="button"
-                onClick={requestClose}
+                onClick={handleDismissUnpaid}
                 className="py-3 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white font-bold text-xs transition-colors cursor-pointer"
               >
                 Cancel

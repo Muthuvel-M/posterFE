@@ -42,7 +42,7 @@ const MainLayout = () => {
   const { showReceipt } = useCart();
   const { settings, customers, updateSettingsLocally, addCustomerLocally, updateProductLocally } = useCatalog();
 
-  const [activeTab, setActiveTab] = useState('home'); // Home Bento as default
+  const [activeTab, setActiveTab] = useState('checkout'); // New Sale as default
   const [isInstantQROpen, setIsInstantQROpen] = useState(false);
   const [isInstagramQROpen, setIsInstagramQROpen] = useState(false);
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);

@@ -397,59 +397,6 @@ export const HomeBento = ({
           </div>
         </div>
       </div>
-
-      {/* Section: REVENUE & CASH OVERVIEW */}
-      <div className="space-y-2 animate-card-in stagger-11">
-        <div className="flex items-center justify-between">
-          <h2 className="text-[11px] font-black uppercase tracking-wider text-zinc-400">
-            BUSINESS OVERVIEW
-          </h2>
-          <button
-            onClick={() => onNavigate('expenses')}
-            className="text-[11px] font-bold text-rose-400 hover:text-rose-300 flex items-center gap-0.5 transition-colors cursor-pointer"
-          >
-            <span>Expenses</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800/80 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center shadow-md">
-          {/* 1. Today's Revenue */}
-          <div className="p-2.5 rounded-xl bg-zinc-950/60 border border-zinc-800/60">
-            <span className="text-[9.5px] uppercase font-bold text-zinc-400 block">Today Rev</span>
-            <div className="text-sm sm:text-base font-black text-amber-300 mt-0.5">
-              {formatCurrency(todaySummary.revenue)}
-            </div>
-          </div>
-
-          {/* 2. Today's Profit */}
-          <div className="p-2.5 rounded-xl bg-zinc-950/60 border border-zinc-800/60">
-            <span className="text-[9.5px] uppercase font-bold text-zinc-400 block">Profit</span>
-            <div className="text-sm sm:text-base font-black text-emerald-400 mt-0.5">
-              {formatCurrency(todaySummary.profit)}
-            </div>
-          </div>
-
-          {/* 3. In-Hand Cash */}
-          <div
-            onClick={() => onNavigate('expenses')}
-            className="p-2.5 rounded-xl bg-zinc-950/60 hover:bg-zinc-800/60 border border-amber-500/30 cursor-pointer transition-colors"
-          >
-            <span className="text-[9.5px] uppercase font-bold text-amber-400 block">In-Hand Cash</span>
-            <div className="text-sm sm:text-base font-black text-white mt-0.5">
-              {formatCurrency(cashInHand)}
-            </div>
-          </div>
-
-          {/* 4. Orders Count */}
-          <div className="p-2.5 rounded-xl bg-zinc-950/60 border border-zinc-800/60">
-            <span className="text-[9.5px] uppercase font-bold text-zinc-400 block">Orders</span>
-            <div className="text-sm sm:text-base font-black text-white mt-0.5">
-              {todaySummary.count}
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

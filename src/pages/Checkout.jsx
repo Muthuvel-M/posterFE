@@ -20,6 +20,18 @@ import { useToast } from '../context/ToastContext';
 import { formatCurrency, getProductInitial } from '../utils/formatters';
 import { api } from '../api/client';
 
+const PERCENT_DISCOUNTS = [
+  { id: 5, label: '5%', percent: 5, minSubtotal: 200 },
+  { id: 10, label: '10%', percent: 10, minSubtotal: 500 },
+  { id: 15, label: '15%', percent: 15, minSubtotal: 1000 },
+];
+
+const FLAT_DISCOUNTS = [
+  { id: 30, label: '₹30', amount: 30, minSubtotal: 400 },
+  { id: 50, label: '₹50', amount: 50, minSubtotal: 700 },
+  { id: 70, label: '₹70', amount: 70, minSubtotal: 900 },
+];
+
 export const Checkout = ({
   customers = [],
   onCustomerCreated,
@@ -53,7 +65,7 @@ export const Checkout = ({
   const [custName, setCustName] = useState(customer?.name || '');
   const [custPhone, setCustPhone] = useState(customer?.phone || '');
   const [discountMode, setDiscountMode] = useState('flat'); // 'percent' | 'flat'
-  const [discountValue, setDiscountValue] = useState(discount ? String(discount) : '');
+  const [selectedChip, setSelectedChip] = useState(null);
 
   useEffect(() => {
     if (customer) {
@@ -62,26 +74,47 @@ export const Checkout = ({
     }
   }, [customer]);
 
+  useEffect(() => {
+    if (selectedChip == null) return;
+    const tiers = discountMode === 'percent' ? PERCENT_DISCOUNTS : FLAT_DISCOUNTS;
+    const chip = tiers.find((tier) => tier.id === selectedChip);
+    if (!chip || subtotal <= chip.minSubtotal) {
+      setSelectedChip(null);
+      setDiscount(0);
+      return;
+    }
+    const next =
+      discountMode === 'percent'
+        ? Math.round((subtotal * chip.percent) / 100)
+        : chip.amount;
+    if (next !== discount) setDiscount(next);
+  }, [subtotal, discountMode, selectedChip, discount, setDiscount]);
+
   const getCartItemQty = (productId) => {
     const found = cartItems.find((item) => item.product._id === productId);
     return found ? found.qty : 0;
   };
 
-  const handleDiscountChange = (val, mode = discountMode) => {
-    setDiscountValue(val);
-    const num = Math.max(0, Number(val) || 0);
-
-    if (mode === 'percent') {
-      const calculated = Math.round((subtotal * Math.min(100, num)) / 100);
-      setDiscount(calculated);
-    } else {
-      setDiscount(num);
-    }
+  const handleToggleDiscountMode = (mode) => {
+    if (mode === discountMode) return;
+    setDiscountMode(mode);
+    setSelectedChip(null);
+    setDiscount(0);
   };
 
-  const handleToggleDiscountMode = (mode) => {
-    setDiscountMode(mode);
-    handleDiscountChange(discountValue, mode);
+  const handleSelectDiscountChip = (chip) => {
+    if (subtotal <= chip.minSubtotal) return;
+    if (selectedChip === chip.id) {
+      setSelectedChip(null);
+      setDiscount(0);
+      return;
+    }
+    setSelectedChip(chip.id);
+    const next =
+      discountMode === 'percent'
+        ? Math.round((subtotal * chip.percent) / 100)
+        : chip.amount;
+    setDiscount(next);
   };
 
   const handleProceedToReview = () => {
@@ -300,15 +333,15 @@ export const Checkout = ({
                               e.stopPropagation();
                               addToCart(p);
                             }}
-                            className="w-8 h-8 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 flex items-center justify-center font-black shadow-md shadow-amber-400/20 group-hover:scale-105 active:scale-90 transition-all disabled:opacity-30 cursor-pointer"
+                            className="w-11 h-11 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 flex items-center justify-center font-black shadow-md shadow-amber-400/20 group-hover:scale-105 active:scale-90 transition-all disabled:opacity-30 cursor-pointer"
                             title={`Add ${p.name}`}
                           >
-                            <Plus className="w-4 h-4 stroke-[3]" />
+                            <Plus className="w-6 h-6 stroke-[3]" />
                           </button>
                         ) : (
                           <div
                             onClick={(e) => e.stopPropagation()}
-                            className="flex items-center gap-1.5 bg-amber-400 text-zinc-950 px-2 py-1 rounded-xl font-black text-xs shadow-md ring-1 ring-zinc-900 animate-scale-up"
+                            className="flex items-center gap-1 bg-amber-400 text-zinc-950 px-1 py-1 rounded-2xl font-black text-sm shadow-md ring-1 ring-zinc-900 animate-scale-up"
                           >
                             <button
                               type="button"
@@ -316,22 +349,22 @@ export const Checkout = ({
                                 e.stopPropagation();
                                 updateQty(p._id, inCartQty - 1);
                               }}
-                              className="w-5 h-5 rounded-lg hover:bg-black/15 flex items-center justify-center transition-colors cursor-pointer"
+                              className="w-11 h-11 rounded-xl hover:bg-black/15 flex items-center justify-center transition-colors cursor-pointer"
                               title="Decrease"
                             >
-                              <Minus className="w-3.5 h-3.5 stroke-[3]" />
+                              <Minus className="w-6 h-6 stroke-[3]" />
                             </button>
-                            <span className="min-w-[16px] text-center font-black text-xs">{inCartQty}</span>
+                            <span className="min-w-[20px] text-center font-black text-sm">{inCartQty}</span>
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 updateQty(p._id, inCartQty + 1);
                               }}
-                              className="w-5 h-5 rounded-lg hover:bg-black/15 flex items-center justify-center transition-colors cursor-pointer"
+                              className="w-11 h-11 rounded-xl hover:bg-black/15 flex items-center justify-center transition-colors cursor-pointer"
                               title="Add one more"
                             >
-                              <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                              <Plus className="w-6 h-6 stroke-[3]" />
                             </button>
                           </div>
                         )}
@@ -563,15 +596,34 @@ export const Checkout = ({
               </button>
             </div>
 
-            <div>
-              <input
-                type="number"
-                min="0"
-                placeholder="0"
-                value={discountValue}
-                onChange={(e) => handleDiscountChange(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-2xl bg-[#151518] border border-zinc-800 text-xs sm:text-sm text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all"
-              />
+            <div className="grid grid-cols-3 gap-2">
+              {(discountMode === 'percent' ? PERCENT_DISCOUNTS : FLAT_DISCOUNTS).map((chip) => {
+                const eligible = subtotal > chip.minSubtotal;
+                const selected = selectedChip === chip.id;
+                return (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    disabled={!eligible}
+                    onClick={() => handleSelectDiscountChip(chip)}
+                    title={
+                      eligible
+                        ? `Apply ${chip.label}`
+                        : `Available above ₹${chip.minSubtotal}`
+                    }
+                    className={`py-3 px-2 rounded-xl text-xs font-black transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-35 ${
+                      selected
+                        ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
+                        : 'bg-[#151518] text-zinc-300 border border-zinc-800 hover:text-white'
+                    }`}
+                  >
+                    <span className="block">{chip.label}</span>
+                    <span className={`block text-[10px] font-semibold mt-0.5 ${selected ? 'text-zinc-800' : 'text-zinc-500'}`}>
+                      above ₹{chip.minSubtotal}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 

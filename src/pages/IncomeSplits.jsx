@@ -153,6 +153,10 @@ export const IncomeSplits = ({ onNavigate }) => {
       ? monthWeekendData.weeks[selectedWeekIndex]
       : null;
 
+  const weekendWeeksNewestFirst = [...(monthWeekendData?.weeks || [])]
+    .map((w, idx) => ({ w, idx }))
+    .reverse();
+
   const pctCheck = activeWeekPreview?.percentages
     ? validatePercentages(activeWeekPreview.percentages)
     : { valid: true, sum: 100 };
@@ -306,7 +310,7 @@ export const IncomeSplits = ({ onNavigate }) => {
                     All {monthWeekendData?.weeksCount || 4} Weeks
                   </button>
 
-                  {(monthWeekendData?.weeks || []).map((w, idx) => (
+                  {weekendWeeksNewestFirst.map(({ w, idx }) => (
                     <button
                       key={w.weekStartDate}
                       type="button"
@@ -328,7 +332,7 @@ export const IncomeSplits = ({ onNavigate }) => {
               {selectedWeekIndex === 'all' ? (
                 /* ALL 4 WEEKS OVERVIEW CARDS */
                 <div className="space-y-3">
-                  {(monthWeekendData?.weeks || []).map((w) => (
+                  {weekendWeeksNewestFirst.map(({ w }) => (
                     <div
                       key={w.weekStartDate}
                       className="p-4 rounded-2xl bg-[#1c1c22] border border-zinc-800 space-y-3 hover:border-zinc-700 transition-all"

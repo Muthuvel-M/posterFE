@@ -206,56 +206,6 @@ export const Expenses = ({ onNavigate }) => {
         </button>
       </div>
 
-      {/* ─────────────────────────────────────────────────────────────
-          1. HERO CARD: LIVE IN-HAND CASH
-         ───────────────────────────────────────────────────────────── */}
-      <div className="p-5 sm:p-6 rounded-[28px] bg-gradient-to-br from-[#1c1917] via-[#141417] to-[#121215] border border-amber-500/30 shadow-xl space-y-4 animate-card-in stagger-2 relative overflow-hidden">
-        {/* Glow Ambient Effect */}
-        <div className="absolute -right-10 -top-10 w-36 h-36 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-1.5">
-              <Banknote className="w-4 h-4 text-amber-400" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-amber-400">
-                LIVE IN-HAND CASH (DRAWER)
-              </span>
-            </div>
-            <div className="text-3xl sm:text-4xl font-black text-white mt-1 tracking-tight">
-              {formatCurrency(cashFlow.cashInHand)}
-            </div>
-          </div>
-
-          <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase bg-emerald-950/80 border border-emerald-500/50 text-emerald-400 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> LIVE
-          </span>
-        </div>
-
-        {/* Cash Inflow & Outflow Breakdown */}
-        <div className="grid grid-cols-2 gap-2.5 pt-1 border-t border-zinc-800/80">
-          <div className="p-2.5 rounded-xl bg-zinc-900/80 border border-zinc-800/60">
-            <div className="flex items-center gap-1 text-[9.5px] uppercase font-bold text-emerald-400">
-              <ArrowDownRight className="w-3.5 h-3.5" />
-              <span>Total Cash Inflow</span>
-            </div>
-            <div className="text-sm font-black text-white mt-0.5">
-              +{formatCurrency(cashFlow.lifetimeCashInflow)}
-            </div>
-            <span className="text-[9px] text-zinc-400">Sales + Custom deposits</span>
-          </div>
-
-          <div className="p-2.5 rounded-xl bg-zinc-900/80 border border-zinc-800/60">
-            <div className="flex items-center gap-1 text-[9.5px] uppercase font-bold text-rose-400">
-              <ArrowUpRight className="w-3.5 h-3.5" />
-              <span>Total Cash Outflow</span>
-            </div>
-            <div className="text-sm font-black text-rose-300 mt-0.5">
-              -{formatCurrency(cashFlow.lifetimeCashOutflow)}
-            </div>
-            <span className="text-[9px] text-zinc-400">Cash paid expenses</span>
-          </div>
-        </div>
-      </div>
 
       {/* ─────────────────────────────────────────────────────────────
           2. EXPENSE SUMMARY STATS
