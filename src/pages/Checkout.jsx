@@ -19,19 +19,8 @@ import { useCatalog } from '../context/CatalogContext';
 import { useToast } from '../context/ToastContext';
 import { formatCurrency, getProductInitial } from '../utils/formatters';
 import { freeGroupKey, normalizeFreeOffer, paidQtyOf } from '../utils/freeOffer';
+import { discountAmount, discountTiers } from '../utils/discounts';
 import { api } from '../api/client';
-
-const PERCENT_DISCOUNTS = [
-  { id: 5, label: '5%', percent: 5, minSubtotal: 200 },
-  { id: 10, label: '10%', percent: 10, minSubtotal: 500 },
-  { id: 15, label: '15%', percent: 15, minSubtotal: 1000 },
-];
-
-const FLAT_DISCOUNTS = [
-  { id: 30, label: '₹30', amount: 30, minSubtotal: 400 },
-  { id: 50, label: '₹50', amount: 50, minSubtotal: 700 },
-  { id: 70, label: '₹70', amount: 70, minSubtotal: 900 },
-];
 
 export const Checkout = ({
   customers = [],
@@ -81,17 +70,13 @@ export const Checkout = ({
 
   useEffect(() => {
     if (selectedChip == null) return;
-    const tiers = discountMode === 'percent' ? PERCENT_DISCOUNTS : FLAT_DISCOUNTS;
-    const chip = tiers.find((tier) => tier.id === selectedChip);
-    if (!chip || subtotal <= chip.minSubtotal) {
+    const chip = discountTiers(discountMode).find((tier) => tier.id === selectedChip);
+    const next = discountAmount(discountMode, chip, subtotal);
+    if (!chip || next === 0) {
       setSelectedChip(null);
       setDiscount(0);
       return;
     }
-    const next =
-      discountMode === 'percent'
-        ? Math.round((subtotal * chip.percent) / 100)
-        : chip.amount;
     if (next !== discount) setDiscount(next);
   }, [subtotal, discountMode, selectedChip, discount, setDiscount]);
 
@@ -138,11 +123,7 @@ export const Checkout = ({
       return;
     }
     setSelectedChip(chip.id);
-    const next =
-      discountMode === 'percent'
-        ? Math.round((subtotal * chip.percent) / 100)
-        : chip.amount;
-    setDiscount(next);
+    setDiscount(discountAmount(discountMode, chip, subtotal));
   };
 
   const pickFreeTarget = (items) =>
@@ -743,7 +724,7 @@ export const Checkout = ({
             </div>
 
             <div className="grid grid-cols-3 gap-2">
-              {(discountMode === 'percent' ? PERCENT_DISCOUNTS : FLAT_DISCOUNTS).map((chip) => {
+              {discountTiers(discountMode).map((chip) => {
                 const eligible = subtotal > chip.minSubtotal;
                 const selected = selectedChip === chip.id;
                 return (

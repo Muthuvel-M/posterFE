@@ -14,10 +14,12 @@ import {
   Clock,
   Truck,
   Image as ImageIcon,
+  Tag,
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { useModalAnimation } from '../hooks/useModalAnimation';
 import { formatCurrency } from '../utils/formatters';
+import { discountAmount, discountTiers } from '../utils/discounts';
 import { api } from '../api/client';
 
 export const CustomOrderModal = ({
@@ -56,6 +58,8 @@ export const CustomOrderModal = ({
   const [totalPrice, setTotalPrice] = useState('');
   const [costPrice, setCostPrice] = useState('');
   const [advancePaid, setAdvancePaid] = useState('');
+  const [discountMode, setDiscountMode] = useState('flat');
+  const [selectedChip, setSelectedChip] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('upi'); // 'upi' | 'cash'
   const [customNotes, setCustomNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -177,11 +181,18 @@ export const CustomOrderModal = ({
       setOrderDate(safeDateToInput(order.orderDate || order.createdAt || new Date()));
       setDeliveryDate(safeDateToInput(order.deliveryDate || order.dueDate || ''));
 
-      // Pricing
-      const existingTotal = order.pricing?.totalPrice !== undefined ? String(order.pricing.totalPrice) : '';
-      setTotalPrice(existingTotal);
+      // Pricing. Older orders stored only the payable total, with no discount.
+      const hasQuoted = order.pricing?.quotedPrice !== undefined && order.pricing?.quotedPrice !== null;
+      const quoted = hasQuoted ? order.pricing.quotedPrice : order.pricing?.totalPrice;
+      setTotalPrice(quoted !== undefined && quoted !== null && quoted !== '' ? String(quoted) : '');
       setCostPrice(order.pricing?.costPrice !== undefined ? String(order.pricing.costPrice) : '');
       setAdvancePaid(order.pricing?.advancePaid !== undefined ? String(order.pricing.advancePaid) : '');
+      setDiscountMode(order.pricing?.discountMode === 'percent' ? 'percent' : 'flat');
+      setSelectedChip(
+        order.pricing?.discountChip !== undefined && order.pricing?.discountChip !== null
+          ? order.pricing.discountChip
+          : null
+      );
       setPaymentMethod(order.paymentMethod || 'upi');
       setCustomNotes(order.customNotes || '');
     } else {
@@ -200,6 +211,8 @@ export const CustomOrderModal = ({
       setTotalPrice('');
       setCostPrice('');
       setAdvancePaid('');
+      setDiscountMode('flat');
+      setSelectedChip(null);
       setPaymentMethod('upi');
       setCustomNotes('');
 
@@ -347,9 +360,36 @@ export const CustomOrderModal = ({
   const numericTotal = Number(totalPrice) || 0;
   const numericCost = Number(costPrice) || 0;
   const numericAdvance = Number(advancePaid) || 0;
-  const balanceDue = Math.max(0, numericTotal - numericAdvance);
-  const estimatedProfit = Math.max(0, numericTotal - numericCost);
-  const profitMargin = numericTotal > 0 ? ((estimatedProfit / numericTotal) * 100).toFixed(1) : 0;
+  const quote = numericTotal > 0 ? numericTotal : calculatedTotal;
+  const activeChip = discountTiers(discountMode).find((tier) => tier.id === selectedChip) || null;
+  const orderDiscount = discountAmount(discountMode, activeChip, quote);
+  const payable = Math.max(0, quote - orderDiscount);
+  const balanceDue = Math.max(0, payable - numericAdvance);
+  const estimatedProfit = Math.max(0, payable - numericCost);
+  const profitMargin = payable > 0 ? ((estimatedProfit / payable) * 100).toFixed(1) : 0;
+
+  useEffect(() => {
+    if (selectedChip == null) return;
+    const chip = discountTiers(discountMode).find((tier) => tier.id === selectedChip);
+    if (discountAmount(discountMode, chip, quote) === 0) {
+      setSelectedChip(null);
+    }
+  }, [selectedChip, discountMode, quote]);
+
+  const handleToggleDiscountMode = (mode) => {
+    if (mode === discountMode) return;
+    setDiscountMode(mode);
+    setSelectedChip(null);
+  };
+
+  const handleSelectDiscountChip = (chip) => {
+    if (quote <= chip.minSubtotal) return;
+    if (selectedChip === chip.id) {
+      setSelectedChip(null);
+      return;
+    }
+    setSelectedChip(chip.id);
+  };
 
   const totalPosterUnits = posterTiers.reduce((acc, c) => acc + (Number(c.count) || 0), 0);
   const totalFrameUnits = frameTiers.reduce((acc, c) => acc + (Number(c.count) || 0), 0);
@@ -431,7 +471,6 @@ export const CustomOrderModal = ({
         .join(' & ');
 
       const defaultTitle = `${customerName.trim()}'s Custom ${primarySize} ${typeSummary}`;
-      const finalTotal = numericTotal > 0 ? numericTotal : calculatedTotal;
 
       const payload = {
         title: title.trim() || defaultTitle,
@@ -461,9 +500,13 @@ export const CustomOrderModal = ({
           glassPrice: 0,
           costPrice: numericCost,
           profit: estimatedProfit,
-          totalPrice: finalTotal,
+          quotedPrice: quote,
+          discount: orderDiscount,
+          discountMode,
+          discountChip: selectedChip,
+          totalPrice: payable,
           advancePaid: numericAdvance,
-          balanceDue: Math.max(0, finalTotal - numericAdvance),
+          balanceDue,
         },
         paymentMethod,
       };
@@ -992,7 +1035,7 @@ export const CustomOrderModal = ({
               <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block">
                 5. PRICING, COST & ADVANCE
               </span>
-              {numericTotal > 0 && (
+              {quote > 0 && (
                 <span className="text-[10px] font-bold text-emerald-400">
                   Est. Profit: ₹{estimatedProfit} ({profitMargin}%)
                 </span>
@@ -1064,6 +1107,62 @@ export const CustomOrderModal = ({
               </div>
             </div>
 
+            <div className="space-y-2">
+              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block">
+                Discount
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleToggleDiscountMode('percent')}
+                  className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                    discountMode === 'percent'
+                      ? 'bg-[#2a281c] border border-amber-400/80 text-amber-300'
+                      : 'bg-[#121215] text-zinc-400 border border-zinc-800 hover:text-white'
+                  }`}
+                >
+                  <span>% Percent</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleToggleDiscountMode('flat')}
+                  className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                    discountMode === 'flat'
+                      ? 'bg-[#2a281c] border border-amber-400/80 text-amber-300'
+                      : 'bg-[#121215] text-zinc-400 border border-zinc-800 hover:text-white'
+                  }`}
+                >
+                  <Tag className="w-3.5 h-3.5" />
+                  <span>₹ Flat</span>
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {discountTiers(discountMode).map((chip) => {
+                  const eligible = quote > chip.minSubtotal;
+                  const selected = selectedChip === chip.id;
+                  return (
+                    <button
+                      key={chip.id}
+                      type="button"
+                      disabled={!eligible}
+                      onClick={() => handleSelectDiscountChip(chip)}
+                      title={eligible ? `Apply ${chip.label}` : `Available above ₹${chip.minSubtotal}`}
+                      className={`py-3 px-2 rounded-xl text-xs font-black transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-35 ${
+                        selected
+                          ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
+                          : 'bg-[#121215] text-zinc-300 border border-zinc-800 hover:text-white'
+                      }`}
+                    >
+                      <span className="block">{chip.label}</span>
+                      <span className={`block text-[10px] font-semibold mt-0.5 ${selected ? 'text-zinc-800' : 'text-zinc-500'}`}>
+                        above ₹{chip.minSubtotal}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Payment Method Switcher (Affects In-Hand Cash calculation) */}
             <div className="pt-1">
               <label className="block text-[10px] font-bold text-zinc-400 mb-1">
@@ -1097,18 +1196,18 @@ export const CustomOrderModal = ({
             </div>
 
             {/* Quick 50% Advance Pill */}
-            {numericTotal > 0 && (
+            {payable > 0 && (
               <div className="flex items-center gap-2 pt-0.5">
                 <button
                   type="button"
-                  onClick={() => setAdvancePaid(String(Math.round(numericTotal / 2)))}
+                  onClick={() => setAdvancePaid(String(Math.round(payable / 2)))}
                   className="px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-[10px] font-bold text-emerald-400 transition-colors cursor-pointer"
                 >
-                  ⚡ 50% Advance (₹{Math.round(numericTotal / 2)})
+                  ⚡ 50% Advance (₹{Math.round(payable / 2)})
                 </button>
                 <button
                   type="button"
-                  onClick={() => setAdvancePaid(String(numericTotal))}
+                  onClick={() => setAdvancePaid(String(payable))}
                   className="px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-[10px] font-bold text-zinc-300 transition-colors cursor-pointer"
                 >
                   100% Full Paid
@@ -1117,7 +1216,14 @@ export const CustomOrderModal = ({
             )}
 
             {/* Dynamic Balance Calculation Bar */}
-            <div className="p-3 rounded-xl bg-[#121215] border border-zinc-800 flex items-center justify-between text-xs">
+            <div className="p-3 rounded-xl bg-[#121215] border border-zinc-800 space-y-2 text-xs">
+              {orderDiscount > 0 && (
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-bold text-zinc-400 uppercase">Discount</span>
+                  <span className="font-mono font-black text-amber-300">-{formatCurrency(orderDiscount)}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
               <div>
                 <span className="text-[10px] font-bold text-zinc-400 uppercase block">
                   Remaining Balance
@@ -1131,19 +1237,20 @@ export const CustomOrderModal = ({
               </div>
 
               <span
-                className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase ${balanceDue === 0 && numericTotal > 0
+                className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase ${balanceDue === 0 && payable > 0
                   ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
                   : numericAdvance > 0
                     ? 'bg-amber-950 text-amber-400 border border-amber-800'
                     : 'bg-rose-950 text-rose-400 border border-rose-800'
                   }`}
               >
-                {balanceDue === 0 && numericTotal > 0
+                {balanceDue === 0 && payable > 0
                   ? 'Fully Paid'
                   : numericAdvance > 0
                     ? 'Partially Paid'
                     : 'Unpaid'}
               </span>
+              </div>
             </div>
           </div>
 
