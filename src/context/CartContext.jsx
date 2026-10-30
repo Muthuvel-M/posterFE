@@ -57,40 +57,41 @@ export const CartProvider = ({ children }) => {
     setCartItems((prev) => prev.filter((item) => item.product._id !== productId));
   };
 
-  const updateQty = (productId, newPaidQty) => {
-    if (newPaidQty <= 0) {
+  const updateQty = (productId, newQty) => {
+    if (newQty <= 0) {
       removeFromCart(productId);
       return;
     }
 
-    setCartItems((prev) => {
-      return prev.map((item) => {
-        if (item.product._id !== productId) return item;
-        const freeQty = Number(item.freeQty) || 0;
-        const maxPaid = Math.max(0, item.product.stock - freeQty);
-        if (newPaidQty > maxPaid) {
-          showToast(`Max available stock is ${item.product.stock}`, 'error');
-          return { ...item, qty: maxPaid + freeQty, freeQty };
-        }
-        return { ...item, qty: newPaidQty + freeQty, freeQty };
-      });
-    });
-  };
-
-  const setFreeQty = (productId, nextFreeQty) => {
-    const freeQty = Math.max(0, Number(nextFreeQty) || 0);
     setCartItems((prev) =>
       prev.map((item) => {
         if (item.product._id !== productId) return item;
-        const paid = Math.max(0, item.qty - (Number(item.freeQty) || 0));
-        const nextQty = paid + freeQty;
-        if (nextQty > item.product.stock) {
-          showToast(`Only ${item.product.stock} in stock for "${item.product.name}"`, 'error');
+        if (newQty > item.product.stock) {
+          showToast(`Max available stock is ${item.product.stock}`, 'error');
           return item;
         }
-        return { ...item, qty: nextQty, freeQty };
+        const currentFree = Number(item.freeQty) || 0;
+        const clampedFree = Math.min(newQty, currentFree);
+        return { ...item, qty: newQty, freeQty: clampedFree };
       })
     );
+  };
+
+  const setFreeQuantities = (updates) => {
+    setCartItems((prev) =>
+      prev.map((item) => {
+        if (updates && updates[item.product._id] !== undefined) {
+          const rawFree = Math.max(0, Number(updates[item.product._id]) || 0);
+          const clampedFree = Math.min(item.qty, rawFree);
+          return { ...item, freeQty: clampedFree };
+        }
+        return item;
+      })
+    );
+  };
+
+  const setFreeQty = (productId, nextFreeQty) => {
+    setFreeQuantities({ [productId]: nextFreeQty });
   };
 
   const updateCustomPrice = (productId, price) => {
@@ -185,6 +186,7 @@ export const CartProvider = ({ children }) => {
         removeFromCart,
         updateQty,
         setFreeQty,
+        setFreeQuantities,
         updateCustomPrice,
         setDiscount,
         setCustomer,
