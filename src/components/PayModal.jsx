@@ -241,7 +241,7 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
     requestClose();
     clearCart();
     if (onNavigate) {
-      onNavigate('sales');
+      onNavigate('checkout');
     }
   };
 
