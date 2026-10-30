@@ -10,6 +10,7 @@ export const BottomNav = ({ activeTab, setActiveTab }) => {
     { id: 'inventory', label: 'Inventory', icon: Boxes },
     { id: 'checkout', label: 'SELL', isFab: true },
     { id: 'dashboard', label: 'Analytics', icon: BarChart3 },
+
     { id: 'settings', label: 'Settings', icon: SettingsIcon },
   ];
 
@@ -33,17 +34,15 @@ export const BottomNav = ({ activeTab, setActiveTab }) => {
                 )}
 
                 <div
-                  className={`w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-gradient-to-tr from-amber-400 to-yellow-300 text-zinc-950 flex items-center justify-center font-black ring-4 ring-zinc-950 transition-all duration-300 ${
-                    isSellActive
+                  className={`w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-gradient-to-tr from-amber-400 to-yellow-300 text-zinc-950 flex items-center justify-center font-black ring-4 ring-zinc-950 transition-all duration-300 ${isSellActive
                       ? 'scale-110 shadow-xl shadow-amber-400/50 ring-amber-400/30 -translate-y-1'
                       : 'shadow-lg shadow-amber-400/30 group-hover:scale-105 group-active:scale-95'
-                  }`}
+                    }`}
                 >
                   <Plus className={`w-7 h-7 stroke-[2.5] transition-transform duration-300 ${isSellActive ? 'rotate-90' : ''}`} />
                 </div>
-                <span className={`text-[10px] font-black uppercase tracking-wider mt-1 transition-colors duration-200 ${
-                  isSellActive ? 'text-amber-300 font-extrabold' : 'text-amber-400/80'
-                }`}>
+                <span className={`text-[10px] font-black uppercase tracking-wider mt-1 transition-colors duration-200 ${isSellActive ? 'text-amber-300 font-extrabold' : 'text-amber-400/80'
+                  }`}>
                   SELL
                 </span>
               </button>
@@ -57,11 +56,10 @@ export const BottomNav = ({ activeTab, setActiveTab }) => {
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`flex-1 flex flex-col items-center justify-center py-1.5 px-2 rounded-2xl transition-all duration-300 relative cursor-pointer select-none group ${
-                isActive
+              className={`flex-1 flex flex-col items-center justify-center py-1.5 px-2 rounded-2xl transition-all duration-300 relative cursor-pointer select-none group ${isActive
                   ? 'text-white'
                   : 'text-zinc-500 hover:text-zinc-300'
-              }`}
+                }`}
             >
               {/* Active Tab Ambient Pill Glow */}
               {isActive && (
@@ -80,9 +78,8 @@ export const BottomNav = ({ activeTab, setActiveTab }) => {
 
               {/* Sliding Active Golden Dot Indicator */}
               <span
-                className={`h-1 rounded-full bg-amber-400 absolute -bottom-0.5 transition-all duration-300 ${
-                  isActive ? 'w-4 opacity-100 shadow-sm shadow-amber-400/80' : 'w-0 opacity-0'
-                }`}
+                className={`h-1 rounded-full bg-amber-400 absolute -bottom-0.5 transition-all duration-300 ${isActive ? 'w-4 opacity-100 shadow-sm shadow-amber-400/80' : 'w-0 opacity-0'
+                  }`}
               />
             </button>
           );
