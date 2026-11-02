@@ -16,11 +16,13 @@ import {
   Image as ImageIcon,
   Tag,
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useModalAnimation } from '../hooks/useModalAnimation';
 import { formatCurrency } from '../utils/formatters';
 import { discountAmount, discountTiers } from '../utils/discounts';
 import { api } from '../api/client';
+import { isCharutaahEmail } from '../utils/businessConfig';
 
 export const CustomOrderModal = ({
   isOpen,
@@ -28,6 +30,8 @@ export const CustomOrderModal = ({
   order = null,
   onSaveSuccess,
 }) => {
+  const { user } = useAuth();
+  const isCharutaah = isCharutaahEmail(user?.email);
   const { showToast } = useToast();
   const { shouldRender, isClosing, requestClose } = useModalAnimation(isOpen, onClose);
   const isEditing = Boolean(order && order._id);
@@ -79,6 +83,69 @@ export const CustomOrderModal = ({
     { id: 'custom_framed_poster', label: '🖼️ Framed Print', desc: 'Custom framed wall art' },
     { id: 'custom_poster', label: '🎨 Poster Only', desc: 'High-res poster art print' },
   ];
+
+  const charutaahItemTypeOptions = [
+    { id: 'crochet', label: '🧶 Crochet', desc: 'Handmade crochet items & decor' },
+    { id: 'keychains', label: '🔑 Keychains', desc: 'Amigurumi & beaded keychains' },
+    { id: 'charms', label: '✨ Charms', desc: 'Custom bag & phone charms' },
+    { id: 'clips', label: '📎 Clips', desc: 'Crochet hair clips & pins' },
+    { id: 'flowers', label: '🌸 Flowers', desc: 'Crochet flower bouquets & stems' },
+  ];
+
+  const [categoryItems, setCategoryItems] = useState({
+    crochet: [{ name: '', count: 1, price: '' }],
+    keychains: [{ name: '', count: 1, price: '' }],
+    charms: [{ name: '', count: 1, price: '' }],
+    clips: [{ name: '', count: 1, price: '' }],
+    flowers: [{ name: '', count: 1, price: '' }],
+  });
+  const [customDiscountVal, setCustomDiscountVal] = useState('');
+
+  const calculateCategoryItemsTotal = (currentTypes = itemTypes, itemsState = categoryItems) => {
+    let sum = 0;
+    currentTypes.forEach((t) => {
+      const items = itemsState[t] || [];
+      items.forEach((it) => {
+        const count = Math.max(1, Number(it.count) || 1);
+        const price = Math.max(0, Number(it.price) || 0);
+        sum += count * price;
+      });
+    });
+    return sum;
+  };
+
+  const handleUpdateCategoryItem = (catId, index, field, value) => {
+    setCategoryItems((prev) => {
+      const list = [...(prev[catId] || [])];
+      list[index] = { ...list[index], [field]: value };
+      const updated = { ...prev, [catId]: list };
+      const newTotal = calculateCategoryItemsTotal(itemTypes, updated);
+      if (newTotal > 0) {
+        setTotalPrice(String(newTotal));
+        if (!isEditing && advancePaid !== '') {
+          setAdvancePaid(String(Math.round(newTotal / 2)));
+        }
+      }
+      return updated;
+    });
+  };
+
+  const handleAddCategoryItem = (catId) => {
+    setCategoryItems((prev) => ({
+      ...prev,
+      [catId]: [...(prev[catId] || []), { name: '', count: 1, price: '' }],
+    }));
+  };
+
+  const handleRemoveCategoryItem = (catId, index) => {
+    setCategoryItems((prev) => {
+      const list = (prev[catId] || []).filter((_, i) => i !== index);
+      const updated = { ...prev, [catId]: list.length > 0 ? list : [{ name: '', count: 1, price: '' }] };
+      const newTotal = calculateCategoryItemsTotal(itemTypes, updated);
+      setTotalPrice(newTotal > 0 ? String(newTotal) : '');
+      return updated;
+    });
+  };
 
   const presetSizes = ['A6', 'A5', 'A4', 'A3'];
 
@@ -175,6 +242,30 @@ export const CustomOrderModal = ({
         setFrameTiers([{ size: legacySize, count: 1, price: legacyPrice ? String(legacyPrice) : '' }]);
       }
 
+      if (isCharutaah && Array.isArray(order.sizeTiers) && order.sizeTiers.length > 0) {
+        const catMap = {
+          crochet: [],
+          keychains: [],
+          charms: [],
+          clips: [],
+          flowers: [],
+        };
+        order.sizeTiers.forEach((st) => {
+          const cat = st.type && catMap[st.type] ? st.type : 'crochet';
+          catMap[cat].push({
+            name: st.name || st.size || '',
+            count: Number(st.count) || 1,
+            price: st.price !== undefined && st.price !== null ? String(st.price) : (st.unitPrice !== undefined ? String(st.unitPrice) : ''),
+          });
+        });
+        Object.keys(catMap).forEach((k) => {
+          if (catMap[k].length === 0) {
+            catMap[k] = [{ name: '', count: 1, price: '' }];
+          }
+        });
+        setCategoryItems(catMap);
+      }
+
       setImage(order.image || '');
 
       // Dates
@@ -193,6 +284,11 @@ export const CustomOrderModal = ({
           ? order.pricing.discountChip
           : null
       );
+      if (order.pricing?.discount !== undefined && order.pricing?.discount !== null) {
+        setCustomDiscountVal(String(order.pricing.discount));
+      } else {
+        setCustomDiscountVal('');
+      }
       setPaymentMethod(order.paymentMethod || 'upi');
       setCustomNotes(order.customNotes || '');
     } else {
@@ -208,6 +304,14 @@ export const CustomOrderModal = ({
       const initialFrame = [{ size: 'A4', count: 1, price: '' }];
       setPosterTiers(initialPoster);
       setFrameTiers(initialFrame);
+      setCategoryItems({
+        crochet: [{ name: '', count: 1, price: '' }],
+        keychains: [{ name: '', count: 1, price: '' }],
+        charms: [{ name: '', count: 1, price: '' }],
+        clips: [{ name: '', count: 1, price: '' }],
+        flowers: [{ name: '', count: 1, price: '' }],
+      });
+      setCustomDiscountVal('');
       setTotalPrice('');
       setCostPrice('');
       setAdvancePaid('');
@@ -227,11 +331,12 @@ export const CustomOrderModal = ({
     }
   }, [order, isOpen]);
 
-  // Toggle multi-selection item types
   const handleToggleItemType = (id) => {
     setItemTypes((prev) => {
       const next = prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id];
-      const newTotal = calculateCombinedTotal(posterTiers, frameTiers, next);
+      const newTotal = isCharutaah
+        ? calculateCategoryItemsTotal(next)
+        : calculateCombinedTotal(posterTiers, frameTiers, next);
       setTotalPrice(newTotal > 0 ? String(newTotal) : '');
       if (!isEditing && newTotal > 0 && advancePaid !== '') {
         setAdvancePaid(String(Math.round(newTotal / 2)));
@@ -355,14 +460,22 @@ export const CustomOrderModal = ({
 
   const posterSubtotal = showPoster ? calculatePosterTotal(posterTiers) : 0;
   const frameSubtotal = showFrame ? calculateFrameTotal(frameTiers) : 0;
-  const calculatedTotal = posterSubtotal + frameSubtotal;
+  const calculatedTotal = isCharutaah
+    ? calculateCategoryItemsTotal()
+    : posterSubtotal + frameSubtotal;
 
   const numericTotal = Number(totalPrice) || 0;
   const numericCost = Number(costPrice) || 0;
   const numericAdvance = Number(advancePaid) || 0;
   const quote = numericTotal > 0 ? numericTotal : calculatedTotal;
   const activeChip = discountTiers(discountMode).find((tier) => tier.id === selectedChip) || null;
-  const orderDiscount = discountAmount(discountMode, activeChip, quote);
+  const orderDiscount = isCharutaah
+    ? customDiscountVal
+      ? discountMode === 'percent'
+        ? Math.round((quote * Math.min(100, Math.max(0, Number(customDiscountVal) || 0))) / 100)
+        : Math.min(quote, Math.max(0, Number(customDiscountVal) || 0))
+      : 0
+    : discountAmount(discountMode, activeChip, quote);
   const payable = Math.max(0, quote - orderDiscount);
   const balanceDue = Math.max(0, payable - numericAdvance);
   const estimatedProfit = Math.max(0, payable - numericCost);
@@ -380,6 +493,7 @@ export const CustomOrderModal = ({
     if (mode === discountMode) return;
     setDiscountMode(mode);
     setSelectedChip(null);
+    setCustomDiscountVal('');
   };
 
   const handleSelectDiscountChip = (chip) => {
@@ -393,6 +507,12 @@ export const CustomOrderModal = ({
 
   const totalPosterUnits = posterTiers.reduce((acc, c) => acc + (Number(c.count) || 0), 0);
   const totalFrameUnits = frameTiers.reduce((acc, c) => acc + (Number(c.count) || 0), 0);
+  const totalCategoryUnits = isCharutaah
+    ? itemTypes.reduce((acc, catId) => {
+        const items = categoryItems[catId] || [];
+        return acc + items.reduce((sub, it) => sub + (Number(it.count) || 1), 0);
+      }, 0)
+    : 0;
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
@@ -441,43 +561,72 @@ export const CustomOrderModal = ({
           })
         : [];
 
+      const formattedCategoryTiers = [];
+      if (isCharutaah) {
+        itemTypes.forEach((t) => {
+          const items = categoryItems[t] || [];
+          items.forEach((it) => {
+            const count = Math.max(1, Number(it.count) || 1);
+            const price = Math.max(0, Number(it.price) || 0);
+            formattedCategoryTiers.push({
+              type: t,
+              size: it.name?.trim() || t,
+              name: it.name?.trim() || t,
+              count,
+              price,
+              unitPrice: price,
+              total: count * price,
+            });
+          });
+        });
+      }
+
       // Combined sizeTiers for complete backward compatibility
-      const combinedSizeTiers = [
-        ...formattedPosterTiers.map((pt) => ({
-          type: 'poster',
-          size: pt.size,
-          count: pt.count,
-          price: pt.price,
-          posterPrice: pt.price,
-          framePrice: 0,
-          unitPrice: pt.price,
-          total: pt.total,
-        })),
-        ...formattedFrameTiers.map((ft) => ({
-          type: 'frame',
-          size: ft.size,
-          count: ft.count,
-          price: ft.price,
-          posterPrice: 0,
-          framePrice: ft.price,
-          unitPrice: ft.price,
-          total: ft.total,
-        })),
-      ];
+      const combinedSizeTiers = isCharutaah
+        ? formattedCategoryTiers
+        : [
+            ...formattedPosterTiers.map((pt) => ({
+              type: 'poster',
+              size: pt.size,
+              count: pt.count,
+              price: pt.price,
+              posterPrice: pt.price,
+              framePrice: 0,
+              unitPrice: pt.price,
+              total: pt.total,
+            })),
+            ...formattedFrameTiers.map((ft) => ({
+              type: 'frame',
+              size: ft.size,
+              count: ft.count,
+              price: ft.price,
+              posterPrice: 0,
+              framePrice: ft.price,
+              unitPrice: ft.price,
+              total: ft.total,
+            })),
+          ];
 
-      const primarySize = formattedPosterTiers[0]?.size || formattedFrameTiers[0]?.size || 'A4';
-      const typeSummary = itemTypes
-        .map((t) => (t === 'custom_frame' ? 'Frame' : t === 'custom_sticker' ? 'Stickers' : 'Poster'))
-        .join(' & ');
+      const primarySize = isCharutaah
+        ? formattedCategoryTiers[0]?.size || 'Craft'
+        : formattedPosterTiers[0]?.size || formattedFrameTiers[0]?.size || 'A4';
 
-      const defaultTitle = `${customerName.trim()}'s Custom ${primarySize} ${typeSummary}`;
+      const typeSummary = isCharutaah
+        ? itemTypes.map((t) => t.toUpperCase()).join(' & ')
+        : itemTypes
+            .map((t) => (t === 'custom_frame' ? 'Frame' : t === 'custom_sticker' ? 'Stickers' : 'Poster'))
+            .join(' & ');
+
+      const defaultTitle = isCharutaah
+        ? `${customerName.trim()}'s Custom ${typeSummary}`
+        : `${customerName.trim()}'s Custom ${primarySize} ${typeSummary}`;
 
       const payload = {
         title: title.trim() || defaultTitle,
-        itemType: itemTypes[0] || 'custom_framed_poster',
+        itemType: itemTypes[0] || (isCharutaah ? 'crochet' : 'custom_framed_poster'),
         itemTypes,
-        posterTiers: formattedPosterTiers,
-        frameTiers: formattedFrameTiers,
+        posterTiers: isCharutaah ? [] : formattedPosterTiers,
+        frameTiers: isCharutaah ? [] : formattedFrameTiers,
         sizeTiers: combinedSizeTiers,
         image: image || '',
         customerName: customerName.trim(),
@@ -494,8 +643,8 @@ export const CustomOrderModal = ({
         dueDate: parsedDeliveryDate,
         customNotes: customNotes.trim(),
         pricing: {
-          basePrice: posterSubtotal,
-          framePrice: frameSubtotal,
+          basePrice: isCharutaah ? calculatedTotal : posterSubtotal,
+          framePrice: isCharutaah ? 0 : frameSubtotal,
           matPrice: 0,
           glassPrice: 0,
           costPrice: numericCost,
@@ -503,7 +652,7 @@ export const CustomOrderModal = ({
           quotedPrice: quote,
           discount: orderDiscount,
           discountMode,
-          discountChip: selectedChip,
+          discountChip: isCharutaah ? null : selectedChip,
           totalPrice: payable,
           advancePaid: numericAdvance,
           balanceDue,
@@ -556,7 +705,9 @@ export const CustomOrderModal = ({
               <h2 className="text-base sm:text-lg font-black tracking-tight text-white">
                 {isEditing ? 'Edit Custom Order' : 'New Custom Order'}
               </h2>
-              <p className="text-[11px] text-zinc-400">Separate poster & frame sizes, counts & pricing</p>
+              <p className="text-[11px] text-zinc-400">
+                {isCharutaah ? 'Separate crochet, keychains & accessories pricing' : 'Separate poster & frame sizes, counts & pricing'}
+              </p>
             </div>
           </div>
 
@@ -616,20 +767,20 @@ export const CustomOrderModal = ({
           </div>
 
           {/* ─────────────────────────────────────────────────────────────
-              SECTION 2: MULTI-SELECT ITEM TYPE
+              SECTION 2: MULTI-SELECT ITEM TYPE / CATEGORY
              ───────────────────────────────────────────────────────────── */}
           <div className="p-4 rounded-2xl bg-[#18181f] border border-zinc-800/80 space-y-2.5">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block">
-                2. ITEM TYPE
+                {isCharutaah ? '2. CATEGORY / ITEM TYPE' : '2. ITEM TYPE'}
               </span>
               <span className="text-[10px] text-zinc-400 font-semibold">
                 {itemTypes.length} selected
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              {itemTypeOptions.map((opt) => {
+            <div className={`grid gap-2 ${isCharutaah ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2'}`}>
+              {(isCharutaah ? charutaahItemTypeOptions : itemTypeOptions).map((opt) => {
                 const isSelected = itemTypes.includes(opt.id);
                 return (
                   <button
@@ -663,14 +814,18 @@ export const CustomOrderModal = ({
           </div>
 
           {/* ─────────────────────────────────────────────────────────────
-              SECTION 3: SEPARATE POSTER & FRAME SIZE TIERS (Conditional on selected item types)
+              SECTION 3: SIZE TIERS / CATEGORY ITEMS
              ───────────────────────────────────────────────────────────── */}
           <div className="p-3.5 sm:p-4 rounded-2xl bg-[#18181f] border border-zinc-800/80 space-y-3.5 overflow-hidden">
             <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
               <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block">
-                3. SIZE TIERS
+                {isCharutaah ? '3. CATEGORY ITEMS & QUANTITY' : '3. SIZE TIERS'}
               </span>
-              {showPoster || showFrame ? (
+              {isCharutaah ? (
+                <span className="text-[10px] font-mono font-bold text-emerald-400">
+                  {itemTypes.length > 0 ? `Total Items: ${totalCategoryUnits}` : 'No category selected'}
+                </span>
+              ) : showPoster || showFrame ? (
                 <span className="text-[10px] font-mono font-bold text-emerald-400">
                   {showPoster && showFrame
                     ? `Posters: ${totalPosterUnits} | Frames: ${totalFrameUnits}`
@@ -683,7 +838,141 @@ export const CustomOrderModal = ({
               )}
             </div>
 
-            {!showPoster && !showFrame ? (
+            {isCharutaah ? (
+              itemTypes.length === 0 ? (
+                <div className="p-4 rounded-xl bg-[#141418] border border-dashed border-zinc-800 text-center py-6">
+                  <span className="text-xl block mb-1">👆</span>
+                  <p className="text-xs font-bold text-zinc-300">Select a Category above</p>
+                  <p className="text-[10.5px] text-zinc-500 mt-0.5">
+                    Select Crochet, Keychains, Charms, Clips, or Flowers to configure custom items.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {itemTypes.map((catId) => {
+                    const catMeta = charutaahItemTypeOptions.find((c) => c.id === catId) || { label: catId };
+                    const items = categoryItems[catId] || [];
+                    const catSubtotal = items.reduce((sum, it) => {
+                      return sum + (Math.max(1, Number(it.count) || 1) * Math.max(0, Number(it.price) || 0));
+                    }, 0);
+
+                    return (
+                      <div
+                        key={catId}
+                        className="p-2.5 sm:p-3 rounded-2xl bg-[#141418] border border-zinc-800/90 space-y-2.5 overflow-hidden"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black uppercase text-amber-300 tracking-wide">
+                            {catMeta.label}
+                          </span>
+                          <span className="text-[11px] font-mono font-bold text-amber-400">
+                            Subtotal: ₹{catSubtotal}
+                          </span>
+                        </div>
+
+                        <div className="space-y-2">
+                          {items.map((tier, idx) => {
+                            const itPrice = Number(tier.price) || 0;
+                            const itCount = Number(tier.count) || 1;
+                            const itTotal = itCount * itPrice;
+
+                            return (
+                              <div
+                                key={idx}
+                                className="p-2.5 rounded-xl bg-[#191920] border border-zinc-800/90 space-y-2"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                                    <input
+                                      type="text"
+                                      value={tier.name || ''}
+                                      onChange={(e) => handleUpdateCategoryItem(catId, idx, 'name', e.target.value)}
+                                      placeholder="Item name / spec (e.g. Daisy Flower)"
+                                      className="flex-1 min-w-0 px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-700 font-medium text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                                    />
+
+                                    {/* Count Stepper */}
+                                    <div className="flex items-center bg-zinc-900 border border-zinc-700 rounded-lg p-0.5 shrink-0">
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleUpdateCategoryItem(catId, idx, 'count', Math.max(1, (Number(tier.count) || 1) - 1))
+                                        }
+                                        className="w-5 h-5 rounded hover:bg-zinc-800 text-zinc-300 flex items-center justify-center cursor-pointer"
+                                      >
+                                        <Minus className="w-2.5 h-2.5" />
+                                      </button>
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        value={tier.count}
+                                        onChange={(e) => handleUpdateCategoryItem(catId, idx, 'count', e.target.value)}
+                                        className="w-7 text-center bg-transparent font-mono font-bold text-xs text-white focus:outline-none"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleUpdateCategoryItem(catId, idx, 'count', (Number(tier.count) || 1) + 1)
+                                        }
+                                        className="w-5 h-5 rounded hover:bg-zinc-800 text-zinc-300 flex items-center justify-center cursor-pointer"
+                                      >
+                                        <Plus className="w-2.5 h-2.5" />
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <span className="font-mono font-bold text-xs text-emerald-400 text-right whitespace-nowrap">
+                                      ₹{itTotal}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveCategoryItem(catId, idx)}
+                                      className="p-1 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-950/40 transition-colors cursor-pointer shrink-0"
+                                      title="Remove item"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Row 2: Dedicated Price Input */}
+                                <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-zinc-800/60">
+                                  <span className="text-[11px] font-semibold text-zinc-400 flex items-center gap-1">
+                                    <span>Unit Price</span>
+                                    <span className="text-[9.5px] text-zinc-500">(each)</span>
+                                  </span>
+                                  <div className="relative w-32 sm:w-36">
+                                    <IndianRupee className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-amber-400" />
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      placeholder="0"
+                                      value={tier.price}
+                                      onChange={(e) => handleUpdateCategoryItem(catId, idx, 'price', e.target.value)}
+                                      className="w-full pl-6 pr-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-700 font-mono font-bold text-xs text-amber-300 placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-amber-400 text-right"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleAddCategoryItem(catId)}
+                          className="w-full py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-amber-400 hover:text-amber-300 text-[10.5px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                        >
+                          <Plus className="w-3 h-3" />
+                          <span>Add {catMeta.label} Item Row</span>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
+            ) : !showPoster && !showFrame ? (
               <div className="p-4 rounded-xl bg-[#141418] border border-dashed border-zinc-800 text-center py-6">
                 <span className="text-xl block mb-1">👆</span>
                 <p className="text-xs font-bold text-zinc-300">Select an Item Type above</p>
@@ -724,7 +1013,7 @@ export const CustomOrderModal = ({
                       ))}
                     </div>
 
-                    {/* Poster Rows - Two-row layout: Row 1 = Size + Stepper + Total + Delete, Row 2 = Price */}
+                    {/* Poster Rows */}
                     <div className="space-y-2">
                       {posterTiers.map((tier, idx) => {
                         const pPrice = Number(tier.price) || 0;
@@ -736,10 +1025,8 @@ export const CustomOrderModal = ({
                             key={idx}
                             className="p-2.5 rounded-xl bg-[#191920] border border-zinc-800/90 space-y-2"
                           >
-                            {/* Row 1: Size Pill (compact), Count Stepper, Subtotal, Delete */}
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-2">
-                                {/* Reduced size pill */}
                                 <input
                                   type="text"
                                   value={tier.size}
@@ -748,7 +1035,6 @@ export const CustomOrderModal = ({
                                   className="w-14 px-2 py-1 rounded-lg bg-zinc-900 border border-zinc-700 font-black text-xs text-amber-300 uppercase text-center focus:outline-none focus:ring-1 focus:ring-amber-400 shrink-0 shadow-inner"
                                 />
 
-                                {/* Count Stepper */}
                                 <div className="flex items-center bg-zinc-900 border border-zinc-700 rounded-lg p-0.5 shrink-0">
                                   <button
                                     type="button"
@@ -778,7 +1064,6 @@ export const CustomOrderModal = ({
                                 </div>
                               </div>
 
-                              {/* Right: Subtotal & Delete */}
                               <div className="flex items-center gap-2 shrink-0">
                                 <span className="font-mono font-bold text-xs text-emerald-400 text-right whitespace-nowrap">
                                   ₹{pTotal}
@@ -795,7 +1080,6 @@ export const CustomOrderModal = ({
                               </div>
                             </div>
 
-                            {/* Row 2: Dedicated Price Input below */}
                             <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-zinc-800/60">
                               <span className="text-[11px] font-semibold text-zinc-400 flex items-center gap-1">
                                 <span>Poster Price</span>
@@ -851,7 +1135,7 @@ export const CustomOrderModal = ({
                       ))}
                     </div>
 
-                    {/* Frame Rows - Two-row layout: Row 1 = Size + Stepper + Total + Delete, Row 2 = Price */}
+                    {/* Frame Rows */}
                     <div className="space-y-2">
                       {frameTiers.map((tier, idx) => {
                         const fPrice = Number(tier.price) || 0;
@@ -863,10 +1147,8 @@ export const CustomOrderModal = ({
                             key={idx}
                             className="p-2.5 rounded-xl bg-[#191920] border border-zinc-800/90 space-y-2"
                           >
-                            {/* Row 1: Size Pill (compact), Count Stepper, Subtotal, Delete */}
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-2">
-                                {/* Reduced size pill */}
                                 <input
                                   type="text"
                                   value={tier.size}
@@ -875,7 +1157,6 @@ export const CustomOrderModal = ({
                                   className="w-14 px-2 py-1 rounded-lg bg-zinc-900 border border-zinc-700 font-black text-xs text-amber-300 uppercase text-center focus:outline-none focus:ring-1 focus:ring-amber-400 shrink-0 shadow-inner"
                                 />
 
-                                {/* Count Stepper */}
                                 <div className="flex items-center bg-zinc-900 border border-zinc-700 rounded-lg p-0.5 shrink-0">
                                   <button
                                     type="button"
@@ -905,7 +1186,6 @@ export const CustomOrderModal = ({
                                 </div>
                               </div>
 
-                              {/* Right: Subtotal & Delete */}
                               <div className="flex items-center gap-2 shrink-0">
                                 <span className="font-mono font-bold text-xs text-emerald-400 text-right whitespace-nowrap">
                                   ₹{fTotal}
@@ -922,7 +1202,6 @@ export const CustomOrderModal = ({
                               </div>
                             </div>
 
-                            {/* Row 2: Dedicated Price Input below */}
                             <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-zinc-800/60">
                               <span className="text-[11px] font-semibold text-zinc-400 flex items-center gap-1">
                                 <span>Frame Price</span>
@@ -1136,31 +1415,57 @@ export const CustomOrderModal = ({
                   <span>₹ Flat</span>
                 </button>
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                {discountTiers(discountMode).map((chip) => {
-                  const eligible = quote > chip.minSubtotal;
-                  const selected = selectedChip === chip.id;
-                  return (
-                    <button
-                      key={chip.id}
-                      type="button"
-                      disabled={!eligible}
-                      onClick={() => handleSelectDiscountChip(chip)}
-                      title={eligible ? `Apply ${chip.label}` : `Available above ₹${chip.minSubtotal}`}
-                      className={`py-3 px-2 rounded-xl text-xs font-black transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-35 ${
-                        selected
-                          ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
-                          : 'bg-[#121215] text-zinc-300 border border-zinc-800 hover:text-white'
-                      }`}
-                    >
-                      <span className="block">{chip.label}</span>
-                      <span className={`block text-[10px] font-semibold mt-0.5 ${selected ? 'text-zinc-800' : 'text-zinc-500'}`}>
-                        above ₹{chip.minSubtotal}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+              {isCharutaah ? (
+                <div className="space-y-1 pt-1">
+                  <div className="relative">
+                    {discountMode === 'percent' ? (
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-400">%</span>
+                    ) : (
+                      <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-amber-400" />
+                    )}
+                    <input
+                      type="number"
+                      min="0"
+                      max={discountMode === 'percent' ? 100 : quote}
+                      placeholder={discountMode === 'percent' ? 'Enter discount % (e.g. 10)' : 'Enter discount amount ₹ (e.g. 50)'}
+                      value={customDiscountVal}
+                      onChange={(e) => setCustomDiscountVal(e.target.value)}
+                      className="w-full pl-8 pr-3 py-2.5 rounded-xl bg-[#121215] border border-zinc-700/80 text-xs text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-400 font-mono font-bold"
+                    />
+                  </div>
+                  {Number(customDiscountVal) > 0 && (
+                    <p className="text-[10px] text-amber-400 font-semibold pl-1">
+                      Discount applied: -₹{orderDiscount}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {discountTiers(discountMode).map((chip) => {
+                    const eligible = quote > chip.minSubtotal;
+                    const selected = selectedChip === chip.id;
+                    return (
+                      <button
+                        key={chip.id}
+                        type="button"
+                        disabled={!eligible}
+                        onClick={() => handleSelectDiscountChip(chip)}
+                        title={eligible ? `Apply ${chip.label}` : `Available above ₹${chip.minSubtotal}`}
+                        className={`py-3 px-2 rounded-xl text-xs font-black transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-35 ${
+                          selected
+                            ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
+                            : 'bg-[#121215] text-zinc-300 border border-zinc-800 hover:text-white'
+                        }`}
+                      >
+                        <span className="block">{chip.label}</span>
+                        <span className={`block text-[10px] font-semibold mt-0.5 ${selected ? 'text-zinc-800' : 'text-zinc-500'}`}>
+                          above ₹{chip.minSubtotal}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Payment Method Switcher (Affects In-Hand Cash calculation) */}

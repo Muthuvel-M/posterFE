@@ -12,13 +12,22 @@ import {
   X,
   ArrowLeft,
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useCatalog } from '../context/CatalogContext';
 import { ProductModal } from '../components/ProductModal';
 import { formatCurrency, getProductInitial } from '../utils/formatters';
 import { api } from '../api/client';
+import {
+  isCharutaahEmail,
+  CHARUTAAH_CATEGORIES,
+  isSizeHidden,
+} from '../utils/businessConfig';
+import crochetImg from '../assets/crochet.jpeg';
 
 export const Products = ({ onNavigate }) => {
+  const { user } = useAuth();
+  const isCharutaah = isCharutaahEmail(user?.email);
   const { showToast } = useToast();
   const {
     products,
@@ -148,24 +157,36 @@ export const Products = ({ onNavigate }) => {
               className="px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-700/80 text-xs font-semibold text-zinc-300 focus:outline-none cursor-pointer"
             >
               <option value="all">All Categories</option>
-              <option value="poster">Posters</option>
-              <option value="frame">Frames</option>
-              <option value="sticker">Stickers</option>
+              {isCharutaah ? (
+                CHARUTAAH_CATEGORIES.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))
+              ) : (
+                <>
+                  <option value="poster">Posters</option>
+                  <option value="frame">Frames</option>
+                  <option value="sticker">Stickers</option>
+                </>
+              )}
             </select>
 
-            <select
-              value={sizeFilter}
-              onChange={(e) => setSizeFilter(e.target.value)}
-              className="px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-700/80 text-xs font-semibold text-zinc-300 focus:outline-none cursor-pointer"
-            >
-              <option value="all">All Sizes</option>
-              <option value="A4">A4</option>
-              <option value="A5">A5</option>
-              <option value="A6">A6</option>
-              <option value="₹15">₹15</option>
-              <option value="₹30">₹30</option>
-              <option value="custom">Custom</option>
-            </select>
+            {!isCharutaah && (
+              <select
+                value={sizeFilter}
+                onChange={(e) => setSizeFilter(e.target.value)}
+                className="px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-700/80 text-xs font-semibold text-zinc-300 focus:outline-none cursor-pointer"
+              >
+                <option value="all">All Sizes</option>
+                <option value="A4">A4</option>
+                <option value="A5">A5</option>
+                <option value="A6">A6</option>
+                <option value="₹15">₹15</option>
+                <option value="₹30">₹30</option>
+                <option value="custom">Custom</option>
+              </select>
+            )}
           </div>
         </div>
 
@@ -200,18 +221,26 @@ export const Products = ({ onNavigate }) => {
                   >
                     <td className="py-3 font-medium">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-11 rounded-lg bg-zinc-900 shrink-0 border border-zinc-800 flex items-center justify-center">
-                          <span
-                            className={`font-black tracking-tight text-[11px] ${
-                              p.category === 'sticker'
-                                ? 'text-fuchsia-300'
-                                : p.category === 'frame'
-                                ? 'text-sky-300'
-                                : 'text-amber-300'
-                            }`}
-                          >
-                            {getProductInitial(p)}
-                          </span>
+                        <div className="w-9 h-11 rounded-lg bg-zinc-900 shrink-0 border border-zinc-800 flex items-center justify-center overflow-hidden">
+                          {isCharutaah ? (
+                            p.image ? (
+                              <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <img src={crochetImg} alt={p.name} className="w-full h-full object-cover" />
+                            )
+                          ) : (
+                            <span
+                              className={`font-black tracking-tight text-[11px] ${
+                                p.category === 'sticker'
+                                  ? 'text-fuchsia-300'
+                                  : p.category === 'frame'
+                                  ? 'text-sky-300'
+                                  : 'text-amber-300'
+                              }`}
+                            >
+                              {getProductInitial(p)}
+                            </span>
+                          )}
                         </div>
                         <div>
                           <span className="font-bold text-white block">
@@ -223,12 +252,18 @@ export const Products = ({ onNavigate }) => {
                     </td>
 
                     <td className="py-3 text-center capitalize text-zinc-300 font-semibold">
-                      {p.category === 'sticker' ? '✨ Sticker' : p.category === 'frame' ? '🔲 Frame' : '🖼️ Poster'}
+                      {isCharutaah
+                        ? p.category || 'General'
+                        : p.category === 'sticker'
+                        ? '✨ Sticker'
+                        : p.category === 'frame'
+                        ? '🔲 Frame'
+                        : '🖼️ Poster'}
                     </td>
 
                     <td className="py-3 text-center">
                       <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-zinc-800 text-zinc-300">
-                        {p.size}
+                        {isCharutaah || isSizeHidden(p.category) ? '—' : p.size || 'Standard'}
                       </span>
                     </td>
 

@@ -207,8 +207,18 @@ export const Customization = ({ onNavigate, settings }) => {
         return { label: '🔲 Frame', color: 'bg-purple-400/10 text-purple-300 border-purple-400/30' };
       case 'custom_sticker':
         return { label: '✨ Stickers', color: 'bg-pink-400/10 text-pink-300 border-pink-400/30' };
+      case 'crochet':
+        return { label: '🧶 Crochet', color: 'bg-amber-400/10 text-amber-300 border-amber-400/30' };
+      case 'keychains':
+        return { label: '🔑 Keychains', color: 'bg-blue-400/10 text-blue-300 border-blue-400/30' };
+      case 'charms':
+        return { label: '✨ Charms', color: 'bg-purple-400/10 text-purple-300 border-purple-400/30' };
+      case 'clips':
+        return { label: '📎 Clips', color: 'bg-emerald-400/10 text-emerald-300 border-emerald-400/30' };
+      case 'flowers':
+        return { label: '🌸 Flowers', color: 'bg-pink-400/10 text-pink-300 border-pink-400/30' };
       default:
-        return { label: '🖼️ Print', color: 'bg-zinc-800 text-zinc-300 border-zinc-700' };
+        return { label: type ? (type.charAt(0).toUpperCase() + type.slice(1)) : 'Item', color: 'bg-zinc-800 text-zinc-300 border-zinc-700' };
     }
   };
 
@@ -555,22 +565,30 @@ export const Customization = ({ onNavigate, settings }) => {
                       {posterTiersList.length === 0 && frameTiersList.length === 0 && (
                         <div className="space-y-1">
                           <span className="text-[10px] uppercase font-bold text-zinc-500 block">
-                            Size Tiers:
+                            {rawTypes.some((t) => ['crochet', 'keychains', 'charms', 'clips', 'flowers'].includes(t))
+                              ? 'Items / Details:'
+                              : 'Size Tiers:'}
                           </span>
                           <div className="flex flex-wrap gap-1.5">
                             {sizeTiersList.map((st, i) => {
-                              const unitP = Number(st.unitPrice) || Number(st.total) || 0;
+                              const unitP = Number(st.price) || Number(st.unitPrice) || 0;
                               const count = Number(st.count) || 1;
+                              const rowTotal = count * unitP;
                               return (
                                 <div
                                   key={i}
                                   className="px-2.5 py-1 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center gap-1.5 text-xs font-bold"
                                 >
                                   <span className="text-amber-400 font-mono font-black">{count}×</span>
-                                  <span className="text-white uppercase">{st.size || 'A4'}</span>
+                                  <span className="text-white">{st.name || st.size || 'Item'}</span>
                                   {unitP > 0 && (
                                     <span className="text-zinc-400 font-normal text-[11px]">
                                       @ ₹{unitP}
+                                    </span>
+                                  )}
+                                  {rowTotal > 0 && (
+                                    <span className="text-emerald-400 font-mono font-bold text-[10.5px]">
+                                      = ₹{rowTotal}
                                     </span>
                                   )}
                                 </div>

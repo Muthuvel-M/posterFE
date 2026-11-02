@@ -7,13 +7,18 @@ import {
   Download,
   Check,
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 import { useModalAnimation } from '../hooks/useModalAnimation';
 import { shareReceiptOnWhatsApp, directPrintReceipt } from '../utils/pdfReceiptGenerator';
+import { isCharutaahEmail } from '../utils/businessConfig';
 import logoImg from '../assets/2.png';
+import crochetImg from '../assets/crochet.jpeg';
 
 export const ReceiptModal = ({ settings }) => {
+  const { user } = useAuth();
+  const isCharutaah = isCharutaahEmail(user?.email);
   const { completedSale, isReceiptModalOpen, closeReceiptModal } = useCart();
   const { showToast } = useToast();
   const [sharing, setSharing] = useState(false);
@@ -25,9 +30,12 @@ export const ReceiptModal = ({ settings }) => {
 
   if (!shouldRender || !completedSale) return null;
 
-  const businessName = settings?.businessName && !settings.businessName.includes('Muthuvel')
+  const businessName = isCharutaah
+    ? 'Charutaah'
+    : settings?.businessName && !settings.businessName.includes('Muthuvel')
     ? settings.businessName
     : 'AuraFrame26';
+  const receiptLogo = isCharutaah ? crochetImg : logoImg;
   const saleNumber = completedSale.saleNumber || 'INV-0001';
   const customerName =
     completedSale.customerSnapshot?.name ||
@@ -81,6 +89,8 @@ export const ReceiptModal = ({ settings }) => {
         total: completedSale.total || 0,
         paymentMethod: completedSale.paymentMethod || 'UPI',
         isCustom: false,
+        businessName,
+        isCharutaah,
         showToast,
       });
     } finally {
@@ -129,14 +139,14 @@ export const ReceiptModal = ({ settings }) => {
         >
           {/* Store Logo & Title */}
           <div className="text-center pt-2">
-            <div className="w-14 h-14 rounded-2xl overflow-hidden mx-auto shadow-md mb-2.5 border border-zinc-200/80 bg-red-600 flex items-center justify-center">
-              <img src={logoImg} alt="Aura Frame" className="w-full h-full object-cover" />
+            <div className={`w-14 h-14 rounded-2xl overflow-hidden mx-auto shadow-md mb-2.5 border border-zinc-200/80 flex items-center justify-center ${isCharutaah ? 'bg-amber-50' : 'bg-red-600'}`}>
+              <img src={receiptLogo} alt={businessName} className="w-full h-full object-cover" />
             </div>
             <h3 className="text-xl font-black tracking-tight text-zinc-900">
               {businessName}
             </h3>
             <p className="text-[11px] text-zinc-500 font-medium">
-              Posters &middot; Framing &middot; Art Decor
+              {isCharutaah ? 'Handmade Crochet · Accessories · Gifts' : 'Posters · Framing · Art Decor'}
             </p>
           </div>
 
@@ -192,7 +202,11 @@ export const ReceiptModal = ({ settings }) => {
                       {item.name}
                     </h5>
                     <p className="text-[11px] text-zinc-500 mt-0.5">
-                      Size: <strong className="text-zinc-700">{item.size || 'Standard'}</strong> &times; {item.qty} (@ ₹{item.sellPrice})
+                      {isCharutaah ? (
+                        <>Qty: {item.qty} (@ ₹{item.sellPrice})</>
+                      ) : (
+                        <>Size: <strong className="text-zinc-700">{item.size || 'Standard'}</strong> &times; {item.qty} (@ ₹{item.sellPrice})</>
+                      )}
                     </p>
                   </div>
 
@@ -234,18 +248,30 @@ export const ReceiptModal = ({ settings }) => {
           </div>
 
           {/* Custom Brand Glow & Tag Note Banner */}
-          <div className="p-4 rounded-2xl bg-[#fffbeb] border border-[#fef3c7] text-[#92400e] text-center space-y-1.5 mt-2">
-            <p className="font-bold text-xs">Thank you, {customerName}! 💛</p>
-            <p className="text-[11px] leading-relaxed text-amber-900">
-              Your AuraFrame order is confirmed, and your receipt is attached. 🧾
-            </p>
-            <p className="text-[11px] text-amber-800">
-              Hope your walls glow with your new posters! ✨
-            </p>
-            <p className="text-[11px] font-bold text-[#b45309] pt-1">
-              Tag us @aura.frame26 when you put them up 📸
-            </p>
-          </div>
+          {isCharutaah ? (
+            <div className="p-4 rounded-2xl bg-[#fffbeb] border border-[#fef3c7] text-[#92400e] text-center space-y-1.5 mt-2">
+              <p className="font-bold text-xs">Thank you, {customerName}! 🧶💛</p>
+              <p className="text-[11px] leading-relaxed text-amber-900">
+                Your Charutaah handmade craft order is confirmed, and your receipt is attached. 🧾
+              </p>
+              <p className="text-[11px] text-amber-800">
+                Crafted with love & care just for you! ✨
+              </p>
+            </div>
+          ) : (
+            <div className="p-4 rounded-2xl bg-[#fffbeb] border border-[#fef3c7] text-[#92400e] text-center space-y-1.5 mt-2">
+              <p className="font-bold text-xs">Thank you, {customerName}! 💛</p>
+              <p className="text-[11px] leading-relaxed text-amber-900">
+                Your AuraFrame order is confirmed, and your receipt is attached. 🧾
+              </p>
+              <p className="text-[11px] text-amber-800">
+                Hope your walls glow with your new posters! ✨
+              </p>
+              <p className="text-[11px] font-bold text-[#b45309] pt-1">
+                Tag us @aura.frame26 when you put them up 📸
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Bottom Actions Bar */}

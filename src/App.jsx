@@ -1,4 +1,4 @@
-import React, { useState, lazy, Suspense } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
@@ -11,6 +11,8 @@ import { Login } from './pages/Login';
 import { HomeBento } from './pages/HomeBento';
 import { Checkout } from './pages/Checkout';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { isCharutaahEmail } from './utils/businessConfig';
+import crochetImg from './assets/crochet.jpeg';
 
 // Lazy load secondary pages for ultra-lightweight initial mobile bundle
 const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
@@ -47,6 +49,23 @@ const MainLayout = () => {
   const [isInstagramQROpen, setIsInstagramQROpen] = useState(false);
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [isRawMaterialOpen, setIsRawMaterialOpen] = useState(false);
+
+  // Dynamic favicon, app title and brand theme for Charutaah
+  useEffect(() => {
+    const isCharutaah = isCharutaahEmail(user?.email);
+    const linkIcon = document.querySelector("link[rel*='icon']");
+    const linkApple = document.querySelector("link[rel*='apple-touch-icon']");
+
+    if (isCharutaah) {
+      document.title = 'Charutaah - POS';
+      if (linkIcon) linkIcon.href = crochetImg;
+      if (linkApple) linkApple.href = crochetImg;
+    } else {
+      document.title = 'AuraFrame POS - Posters & Frames Management';
+      if (linkIcon) linkIcon.href = '/logo.png';
+      if (linkApple) linkApple.href = '/logo.png';
+    }
+  }, [user]);
 
   if (loading) {
     return (
@@ -201,8 +220,8 @@ const MainLayout = () => {
         )}
       </Suspense>
 
-      {/* Mobile Bottom Navigation — hidden on Checkout & Custom Orders (FAB screens) */}
-      {activeTab !== 'checkout' && activeTab !== 'customization' && (
+      {/* Mobile Bottom Navigation — visible on New Sale (checkout) for all businesses */}
+      {activeTab !== 'customization' && (
         <BottomNav
           activeTab={activeTab}
           setActiveTab={setActiveTab}

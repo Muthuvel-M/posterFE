@@ -2,31 +2,38 @@ import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Sun, Moon, LogOut, Sparkles, ShieldCheck } from 'lucide-react';
+import { isCharutaahEmail } from '../utils/businessConfig';
 import logoImg from '../assets/2.png';
+import crochetImg from '../assets/crochet.jpeg';
 
 export const Navbar = ({ activeTab, setActiveTab, settings }) => {
   const { user, logout } = useAuth();
+  const isCharutaah = isCharutaahEmail(user?.email);
   const { isDark, toggleTheme } = useTheme();
+
+  const brandTitle = isCharutaah ? 'Charutaah POS' : (settings?.businessName ? settings.businessName.split(' ')[0] + ' POS' : 'AuraFrame POS');
+  const brandTagline = isCharutaah ? 'Handmade Crochet & Crafts Point of Sale' : (settings?.tagline || 'Posters & Framing Point of Sale');
+  const navLogo = isCharutaah ? crochetImg : logoImg;
 
   return (
     <header className="sticky top-0 z-30 glass-panel border-b border-slate-200/80 dark:border-slate-800/80 px-4 sm:px-6 py-3 transition-colors no-print">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Brand Logo & Title */}
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('checkout')}>
-          <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md shadow-rose-500/20 ring-1 ring-slate-200 dark:ring-slate-700 bg-red-600 flex items-center justify-center shrink-0">
-            <img src={logoImg} alt="Aura Frame" className="w-full h-full object-cover" />
+          <div className={`w-10 h-10 rounded-xl overflow-hidden shadow-md ring-1 ring-slate-200 dark:ring-slate-700 flex items-center justify-center shrink-0 ${isCharutaah ? 'bg-amber-100 shadow-amber-500/20' : 'bg-red-600 shadow-rose-500/20'}`}>
+            <img src={navLogo} alt={brandTitle} className="w-full h-full object-cover" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
               <span className="font-extrabold text-base sm:text-lg tracking-tight bg-gradient-to-r from-slate-900 via-brand-700 to-indigo-600 dark:from-white dark:via-brand-300 dark:to-indigo-400 bg-clip-text text-transparent">
-                {settings?.businessName ? settings.businessName.split(' ')[0] + ' POS' : 'AuraFrame POS'}
+                {brandTitle}
               </span>
               <span className="hidden sm:inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-brand-100 dark:bg-brand-950/80 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800/60">
                 <Sparkles className="w-2.5 h-2.5 text-brand-500" /> POS v1.0
               </span>
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium hidden sm:block">
-              {settings?.tagline || 'Posters & Framing Point of Sale'}
+              {brandTagline}
             </p>
           </div>
         </div>

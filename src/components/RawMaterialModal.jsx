@@ -1,16 +1,21 @@
 import React, { useState } from 'react';
 import { X, Layers, Plus, CheckCircle2, IndianRupee, Sparkles, Box, Banknote, QrCode } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useModalAnimation } from '../hooks/useModalAnimation';
 import { formatCurrency } from '../utils/formatters';
 import { api } from '../api/client';
+import { isCharutaahEmail } from '../utils/businessConfig';
 
 export const RawMaterialModal = ({ isOpen, onClose, onSaveSuccess }) => {
+  const { user } = useAuth();
+  const isCharutaah = isCharutaahEmail(user?.email);
   const { showToast } = useToast();
   const { shouldRender, isClosing, requestClose } = useModalAnimation(isOpen, onClose);
 
   const [category, setCategory] = useState('poster'); // 'poster' | 'frame'
-  const [size, setSize] = useState('A4');
+  const [materialName, setMaterialName] = useState(isCharutaah ? 'Yarn' : '');
+  const [size, setSize] = useState(isCharutaah ? '100g' : 'A4');
   const [count, setCount] = useState(50);
   const [cost, setCost] = useState(500);
   const [paymentMethod, setPaymentMethod] = useState('cash'); // 'cash' | 'upi'
@@ -23,6 +28,10 @@ export const RawMaterialModal = ({ isOpen, onClose, onSaveSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isCharutaah && !materialName.trim()) {
+      showToast('Please enter material name/type', 'error');
+      return;
+    }
     if (!count || count <= 0) {
       showToast('Please enter a valid count/quantity', 'error');
       return;
@@ -34,7 +43,9 @@ export const RawMaterialModal = ({ isOpen, onClose, onSaveSuccess }) => {
 
     try {
       setSubmitting(true);
-      const title = `${count}x ${size} ${category === 'poster' ? 'Poster Paper' : 'Frame Moulding'}`;
+      const title = isCharutaah
+        ? `${count}x ${materialName.trim()} (${size ? size.trim() : 'Standard'})`
+        : `${count}x ${size} ${category === 'poster' ? 'Poster Paper' : 'Frame Moulding'}`;
 
       // Save to backend expense collection
       await api.createExpense({
@@ -45,8 +56,9 @@ export const RawMaterialModal = ({ isOpen, onClose, onSaveSuccess }) => {
         vendor: supplier.trim(),
         isRawMaterial: true,
         rawMaterialDetails: {
-          category,
-          size,
+          category: isCharutaah ? 'craft_material' : category,
+          name: isCharutaah ? materialName.trim() : undefined,
+          size: size ? size.trim() : 'Standard',
           count: Number(count),
           unitCost: Number(unitCost),
         },
@@ -56,8 +68,9 @@ export const RawMaterialModal = ({ isOpen, onClose, onSaveSuccess }) => {
 
       const intakeEntry = {
         id: 'RM-' + Date.now(),
-        category,
-        size,
+        category: isCharutaah ? 'craft_material' : category,
+        name: isCharutaah ? materialName.trim() : (category === 'poster' ? 'Poster Paper' : 'Frame Moulding'),
+        size: size ? size.trim() : 'Standard',
         count: Number(count),
         cost: Number(cost),
         unitCost: Number(unitCost),
@@ -71,7 +84,9 @@ export const RawMaterialModal = ({ isOpen, onClose, onSaveSuccess }) => {
       localStorage.setItem('auraframe_raw_materials', JSON.stringify(existingRaw));
 
       showToast(
-        `Added ${count} units of ${size} ${category === 'poster' ? 'Poster Paper' : 'Frame Moulding'} (₹${cost})`,
+        isCharutaah
+          ? `Added ${count} units of ${materialName.trim()} (₹${cost})`
+          : `Added ${count} units of ${size} ${category === 'poster' ? 'Poster Paper' : 'Frame Moulding'} (₹${cost})`,
         'success',
         3000
       );
@@ -106,7 +121,11 @@ export const RawMaterialModal = ({ isOpen, onClose, onSaveSuccess }) => {
             </div>
             <div>
               <h3 className="text-base font-black text-white">Raw Material Intake</h3>
-              <p className="text-[11px] text-zinc-400">Record incoming paper & frame materials</p>
+              <p className="text-[11px] text-zinc-400">
+                {isCharutaah
+                  ? 'Record incoming craft & raw materials'
+                  : 'Record incoming paper & frame materials'}
+              </p>
             </div>
           </div>
 
@@ -120,60 +139,95 @@ export const RawMaterialModal = ({ isOpen, onClose, onSaveSuccess }) => {
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4">
-          {/* Material Category Switch */}
-          <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
-              Material Type *
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setCategory('poster')}
-                className={`py-2.5 px-4 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                  category === 'poster'
-                    ? 'bg-amber-400 text-zinc-950 border-amber-400 shadow-sm'
-                    : 'bg-[#1c1c22] text-zinc-400 border-zinc-800 hover:text-white'
-                }`}
-              >
-                🖼️ Poster Paper
-              </button>
+          {isCharutaah ? (
+            <>
+              {/* Material Name / Type Input */}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
+                  Material Name / Type *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={materialName}
+                  onChange={(e) => setMaterialName(e.target.value)}
+                  placeholder="e.g. Baby Wool Yarn, Velvet Thread, Keychain Rings"
+                  className="w-full px-4 py-2.5 rounded-xl bg-[#1c1c22] border border-zinc-800 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
 
-              <button
-                type="button"
-                onClick={() => setCategory('frame')}
-                className={`py-2.5 px-4 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                  category === 'frame'
-                    ? 'bg-amber-400 text-zinc-950 border-amber-400 shadow-sm'
-                    : 'bg-[#1c1c22] text-zinc-400 border-zinc-800 hover:text-white'
-                }`}
-              >
-                🔲 Frame Moulding
-              </button>
-            </div>
-          </div>
+              {/* Material Size / Specification Input */}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
+                  Material Size / Specification
+                </label>
+                <input
+                  type="text"
+                  value={size}
+                  onChange={(e) => setSize(e.target.value)}
+                  placeholder="e.g. 100g skein, 4-ply, 3.5mm, Pack of 50"
+                  className="w-full px-4 py-2.5 rounded-xl bg-[#1c1c22] border border-zinc-800 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Material Category Switch */}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
+                  Material Type *
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCategory('poster')}
+                    className={`py-2.5 px-4 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                      category === 'poster'
+                        ? 'bg-amber-400 text-zinc-950 border-amber-400 shadow-sm'
+                        : 'bg-[#1c1c22] text-zinc-400 border-zinc-800 hover:text-white'
+                    }`}
+                  >
+                    🖼️ Poster Paper
+                  </button>
 
-          {/* Size Pills */}
-          <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
-              Material Size *
-            </label>
-            <div className="flex gap-2">
-              {['A4', 'A5', 'A6', 'Custom'].map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setSize(s)}
-                  className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                    size === s
-                      ? 'bg-white text-zinc-950 border-white shadow-sm'
-                      : 'bg-[#1c1c22] text-zinc-400 border-zinc-800 hover:text-white'
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
+                  <button
+                    type="button"
+                    onClick={() => setCategory('frame')}
+                    className={`py-2.5 px-4 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                      category === 'frame'
+                        ? 'bg-amber-400 text-zinc-950 border-amber-400 shadow-sm'
+                        : 'bg-[#1c1c22] text-zinc-400 border-zinc-800 hover:text-white'
+                    }`}
+                  >
+                    🔲 Frame Moulding
+                  </button>
+                </div>
+              </div>
+
+              {/* Size Pills */}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
+                  Material Size *
+                </label>
+                <div className="flex gap-2">
+                  {['A4', 'A5', 'A6', 'Custom'].map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setSize(s)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                        size === s
+                          ? 'bg-white text-zinc-950 border-white shadow-sm'
+                          : 'bg-[#1c1c22] text-zinc-400 border-zinc-800 hover:text-white'
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Count & Cost 2-Column */}
           <div className="grid grid-cols-2 gap-3">

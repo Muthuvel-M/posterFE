@@ -5,26 +5,35 @@ import {
   Plus,
   Trash2,
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useModalAnimation } from '../hooks/useModalAnimation';
 import { api } from '../api/client';
 import { getProductInitial } from '../utils/formatters';
+import {
+  isCharutaahEmail,
+  CHARUTAAH_CATEGORIES,
+  isSizeHidden,
+} from '../utils/businessConfig';
+import crochetImg from '../assets/crochet.jpeg';
 
 export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
+  const { user } = useAuth();
+  const isCharutaah = isCharutaahEmail(user?.email);
   const { showToast } = useToast();
   const { shouldRender, isClosing, requestClose } = useModalAnimation(isOpen, onClose);
   const isEditing = Boolean(product && product._id);
 
-  // Form states matching poster & frame catalog
+  // Form states matching poster & frame catalog or crochet catalog
   const [name, setName] = useState('');
-  const [category, setCategory] = useState('Poster');
-  const [size, setSize] = useState('A4');
+  const [category, setCategory] = useState(isCharutaah ? 'Crochet' : 'Poster');
+  const [size, setSize] = useState(isCharutaah ? '' : 'A4');
 
   // Prices & Stock
-  const [sellPrice, setSellPrice] = useState(0);
-  const [costPrice, setCostPrice] = useState(0);
+  const [sellPrice, setSellPrice] = useState(isCharutaah ? 150 : 0);
+  const [costPrice, setCostPrice] = useState(isCharutaah ? 50 : 0);
   const [operatingCost, setOperatingCost] = useState(0);
-  const [stock, setStock] = useState(20);
+  const [stock, setStock] = useState(isCharutaah ? 10 : 20);
 
 
 
@@ -59,27 +68,38 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
     } else {
       // Default new product
       setName('');
-      setCategory('Poster');
-      setSize('A4');
-      setSellPrice(40);
-      setCostPrice(15);
+      setCategory(isCharutaah ? 'Crochet' : 'Poster');
+      setSize(isCharutaah ? '' : 'A4');
+      setSellPrice(isCharutaah ? 150 : 40);
+      setCostPrice(isCharutaah ? 50 : 15);
       setOperatingCost(0);
-      setStock(25);
+      setStock(isCharutaah ? 15 : 25);
       setHasVariations(false);
-      setVariations([
-        { size: 'A4', name: 'A4 Size', sellPrice: 40, costPrice: 15, stock: 25 },
-        { size: 'A5', name: 'A5 Size', sellPrice: 25, costPrice: 10, stock: 30 },
-        { size: 'A6', name: 'A6 Size', sellPrice: 20, costPrice: 8, stock: 40 },
-      ]);
+      setVariations(
+        isCharutaah
+          ? []
+          : [
+              { size: 'A4', name: 'A4 Size', sellPrice: 40, costPrice: 15, stock: 25 },
+              { size: 'A5', name: 'A5 Size', sellPrice: 25, costPrice: 10, stock: 30 },
+              { size: 'A6', name: 'A6 Size', sellPrice: 20, costPrice: 8, stock: 40 },
+            ]
+      );
       setComboTiers([]);
     }
-  }, [product, isOpen]);
+  }, [product, isOpen, isCharutaah]);
 
   if (!isOpen) return null;
 
   const handleCategorySelect = (cat) => {
     setCategory(cat);
     const lower = cat.toLowerCase();
+
+    if (isCharutaah) {
+      // For Charutaah, size is hidden and items don't use poster/sticker presets
+      setSize('');
+      return;
+    }
+
     if (lower.includes('sticker')) {
       // Stickers default to ₹15 and ₹30
       if (!isEditing) {
@@ -186,23 +206,25 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
     try {
       setSubmitting(true);
       const catLower = category.toLowerCase();
-      const normalizedCategory = catLower.includes('frame')
+      const normalizedCategory = isCharutaah
+        ? catLower
+        : catLower.includes('frame')
         ? 'frame'
         : catLower.includes('sticker')
-        ? 'sticker'
-        : 'poster';
+          ? 'sticker'
+          : 'poster';
 
       const payload = {
         name: name.trim(),
         category: normalizedCategory,
-        size: size || 'A4',
+        size: isCharutaah || isSizeHidden(category) ? '' : (size || 'A4'),
         image: '',
         costPrice: Number(costPrice) || 0,
         sellPrice: Number(sellPrice) || 0,
         operatingCost: Number(operatingCost) || 0,
         stock: Number(stock) || 0,
-        hasVariations,
-        variations: hasVariations ? variations : [],
+        hasVariations: isCharutaah ? false : hasVariations,
+        variations: isCharutaah ? [] : (hasVariations ? variations : []),
         comboOffers: comboTiers,
         active: true,
       };
@@ -229,19 +251,19 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
     }
   };
 
+  const isFormValid = name.trim().length > 0 && Number(sellPrice) > 0 && stock !== '';
+
   if (!shouldRender) return null;
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/85 backdrop-blur-md no-print overflow-hidden ${
-        isClosing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop-in'
-      }`}
+      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/85 backdrop-blur-md no-print overflow-hidden ${isClosing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop-in'
+        }`}
       onClick={requestClose}
     >
       <div
-        className={`w-full max-w-md rounded-t-[32px] sm:rounded-[32px] bg-[#121215] border border-zinc-800 shadow-2xl overflow-hidden text-white max-h-[92vh] flex flex-col my-0 sm:my-auto ${
-          isClosing ? 'animate-modal-slide-down' : 'animate-modal-slide-up'
-        }`}
+        className={`w-full max-w-md rounded-t-[32px] sm:rounded-[32px] bg-[#121215] border border-zinc-800 shadow-2xl overflow-hidden text-white max-h-[92vh] flex flex-col my-0 sm:my-auto ${isClosing ? 'animate-modal-slide-down' : 'animate-modal-slide-up'
+          }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Header */}
@@ -259,28 +281,39 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
 
         {/* Scrollable Form Body */}
         <div className="p-6 overflow-y-auto space-y-4 no-scrollbar flex-1">
-          {/* Size initial preview (no product photo) */}
+          {/* Preview Box: Asset image for Charutaah, Text initials for standard */}
           <div className="flex justify-center">
-            <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-[#1c1c22] border border-zinc-800 flex flex-col items-center justify-center shadow-inner">
-              <span
-                className={`font-black tracking-tight ${
-                  getProductInitial({ name, size, category, sellPrice }).length <= 2
-                    ? 'text-4xl'
-                    : 'text-3xl'
-                } ${
-                  category.toLowerCase().includes('sticker')
-                    ? 'text-fuchsia-300'
-                    : category.toLowerCase().includes('frame')
-                    ? 'text-sky-300'
-                    : 'text-amber-300'
-                }`}
-              >
-                {getProductInitial({ name, size, category, sellPrice })}
-              </span>
-              <span className="text-[10px] font-semibold text-zinc-500 mt-1 uppercase tracking-wider">
-                Preview
-              </span>
-            </div>
+            {isCharutaah ? (
+              <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-[#1c1c22] border border-zinc-800 overflow-hidden shadow-lg relative flex items-center justify-center">
+                <img
+                  src={crochetImg}
+                  alt="Crochet Product Preview"
+                  className="w-full h-full object-cover"
+                />
+                <span className="absolute bottom-1.5 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-sm text-[9px] font-bold text-amber-300 uppercase tracking-wider">
+                  Preview
+                </span>
+              </div>
+            ) : (
+              <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-[#1c1c22] border border-zinc-800 flex flex-col items-center justify-center shadow-inner">
+                <span
+                  className={`font-black tracking-tight ${getProductInitial({ name, size, category, sellPrice }).length <= 2
+                      ? 'text-4xl'
+                      : 'text-3xl'
+                    } ${category.toLowerCase().includes('sticker')
+                      ? 'text-fuchsia-300'
+                      : category.toLowerCase().includes('frame')
+                        ? 'text-sky-300'
+                        : 'text-amber-300'
+                    }`}
+                >
+                  {getProductInitial({ name, size, category, sellPrice })}
+                </span>
+                <span className="text-[10px] font-semibold text-zinc-500 mt-1 uppercase tracking-wider">
+                  Preview
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Product Name * */}
@@ -291,59 +324,84 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
             <input
               type="text"
               required
-              placeholder={category.toLowerCase().includes('sticker') ? "e.g. Anime Holographic Sticker, Chibi Character" : "e.g. Cyberpunk Synthwave, Minimalist Frame"}
+              placeholder={
+                isCharutaah
+                  ? "e.g. Handmade Sunflower, Flower Keychain, Hair Clip"
+                  : category.toLowerCase().includes('sticker')
+                  ? "e.g. Anime Holographic Sticker, Chibi Character"
+                  : "e.g. Cyberpunk Synthwave, Minimalist Frame"
+              }
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full px-4 py-3 rounded-2xl bg-[#1c1c22] border border-zinc-800 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all"
             />
           </div>
 
-          {/* Category Selector: Poster, Frame & Sticker */}
+          {/* Category Selector */}
           <div>
             <label className="block text-xs font-bold text-zinc-300 mb-1.5">
               Category *
             </label>
-            <div className="grid grid-cols-3 gap-2 mb-2">
-              <button
-                type="button"
-                onClick={() => handleCategorySelect('Poster')}
-                className={`py-3 px-2 rounded-2xl text-xs font-black border transition-all cursor-pointer ${
-                  category.toLowerCase().includes('poster')
-                    ? 'bg-amber-400 text-zinc-950 border-amber-400 shadow-md shadow-amber-400/20'
-                    : 'bg-[#1c1c22] text-zinc-400 border-zinc-800 hover:text-white'
-                }`}
-              >
-                🖼️ Poster
-              </button>
+            {isCharutaah ? (
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-2">
+                {CHARUTAAH_CATEGORIES.map((cat) => {
+                  const isSelected = category.toLowerCase() === cat.id.toLowerCase();
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => handleCategorySelect(cat.name)}
+                      className={`py-2.5 px-2 rounded-2xl text-xs font-black border transition-all cursor-pointer text-center ${
+                        isSelected
+                          ? 'bg-amber-400 text-zinc-950 border-amber-400 shadow-md shadow-amber-400/20'
+                          : 'bg-[#1c1c22] text-zinc-400 border-zinc-800 hover:text-white'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                <button
+                  type="button"
+                  onClick={() => handleCategorySelect('Poster')}
+                  className={`py-3 px-2 rounded-2xl text-xs font-black border transition-all cursor-pointer ${category.toLowerCase().includes('poster')
+                      ? 'bg-amber-400 text-zinc-950 border-amber-400 shadow-md shadow-amber-400/20'
+                      : 'bg-[#1c1c22] text-zinc-400 border-zinc-800 hover:text-white'
+                    }`}
+                >
+                  🖼️ Poster
+                </button>
 
-              <button
-                type="button"
-                onClick={() => handleCategorySelect('Frame')}
-                className={`py-3 px-2 rounded-2xl text-xs font-black border transition-all cursor-pointer ${
-                  category.toLowerCase().includes('frame')
-                    ? 'bg-amber-400 text-zinc-950 border-amber-400 shadow-md shadow-amber-400/20'
-                    : 'bg-[#1c1c22] text-zinc-400 border-zinc-800 hover:text-white'
-                }`}
-              >
-                🔲 Frame
-              </button>
+                <button
+                  type="button"
+                  onClick={() => handleCategorySelect('Frame')}
+                  className={`py-3 px-2 rounded-2xl text-xs font-black border transition-all cursor-pointer ${category.toLowerCase().includes('frame')
+                      ? 'bg-amber-400 text-zinc-950 border-amber-400 shadow-md shadow-amber-400/20'
+                      : 'bg-[#1c1c22] text-zinc-400 border-zinc-800 hover:text-white'
+                    }`}
+                >
+                  🔲 Frame
+                </button>
 
-              <button
-                type="button"
-                onClick={() => handleCategorySelect('Sticker')}
-                className={`py-3 px-2 rounded-2xl text-xs font-black border transition-all cursor-pointer ${
-                  category.toLowerCase().includes('sticker')
-                    ? 'bg-amber-400 text-zinc-950 border-amber-400 shadow-md shadow-amber-400/20'
-                    : 'bg-[#1c1c22] text-zinc-400 border-zinc-800 hover:text-white'
-                }`}
-              >
-                ✨ Sticker
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => handleCategorySelect('Sticker')}
+                  className={`py-3 px-2 rounded-2xl text-xs font-black border transition-all cursor-pointer ${category.toLowerCase().includes('sticker')
+                      ? 'bg-amber-400 text-zinc-950 border-amber-400 shadow-md shadow-amber-400/20'
+                      : 'bg-[#1c1c22] text-zinc-400 border-zinc-800 hover:text-white'
+                    }`}
+                >
+                  ✨ Sticker
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Sticker Price Presets (₹15 & ₹30) */}
-          {category.toLowerCase().includes('sticker') && (
+          {/* Sticker Price Presets (Only for standard poster/sticker business) */}
+          {!isCharutaah && category.toLowerCase().includes('sticker') && (
             <div className="p-3.5 rounded-2xl bg-[#1c1c22] border border-zinc-800 space-y-2">
               <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block">
                 STICKER PRICING TIER (₹15 / ₹30)
@@ -352,11 +410,10 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
                 <button
                   type="button"
                   onClick={() => handleSelectStickerPreset(15)}
-                  className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                    Number(sellPrice) === 15
+                  className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${Number(sellPrice) === 15
                       ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
                       : 'bg-zinc-900 border border-zinc-700 text-zinc-300 hover:text-white'
-                  }`}
+                    }`}
                 >
                   <span>✨ ₹15 Sticker</span>
                 </button>
@@ -364,11 +421,10 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
                 <button
                   type="button"
                   onClick={() => handleSelectStickerPreset(30)}
-                  className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                    Number(sellPrice) === 30
+                  className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${Number(sellPrice) === 30
                       ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
                       : 'bg-zinc-900 border border-zinc-700 text-zinc-300 hover:text-white'
-                  }`}
+                    }`}
                 >
                   <span>🌟 ₹30 Sticker</span>
                 </button>
@@ -376,16 +432,15 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
             </div>
           )}
 
-          {/* Size Selector for Poster / Frame */}
-          {!category.toLowerCase().includes('sticker') && (
+          {/* Size Selector for Poster / Frame (Completely hidden for Charutaah and no-size categories) */}
+          {!isCharutaah && !isSizeHidden(category) && !category.toLowerCase().includes('sticker') && (
             <div className="p-3.5 rounded-2xl bg-[#1c1c22] border border-zinc-800 space-y-2">
               <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block">
                 SIZE *
               </span>
               <div
-                className={`grid gap-2 ${
-                  category.toLowerCase().includes('frame') ? 'grid-cols-2' : 'grid-cols-3'
-                }`}
+                className={`grid gap-2 ${category.toLowerCase().includes('frame') ? 'grid-cols-2' : 'grid-cols-3'
+                  }`}
               >
                 {(category.toLowerCase().includes('frame')
                   ? ['A4', 'A5']
@@ -395,11 +450,10 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
                     key={s}
                     type="button"
                     onClick={() => handleSelectSize(s)}
-                    className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                      size === s
+                    className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer ${size === s
                         ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
                         : 'bg-zinc-900 border border-zinc-700 text-zinc-300 hover:text-white'
-                    }`}
+                      }`}
                   >
                     {s}
                   </button>
@@ -541,7 +595,7 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
           </div>
 
           {/* COMBO OFFERS Section (Exact layout from Image) */}
-          <div className="pt-1">
+          {/* <div className="pt-1">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] font-black uppercase tracking-wider text-zinc-400">
                 COMBO OFFERS
@@ -594,7 +648,7 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
                 ))}
               </div>
             )}
-          </div>
+          </div> */}
         </div>
 
         {/* Large Rounded Bottom Action Button */}
@@ -602,8 +656,12 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={submitting}
-            className="w-full py-4 px-6 rounded-2xl bg-[#8c6225] hover:bg-[#a1712a] text-white font-black text-base shadow-xl active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+            disabled={submitting || !isFormValid}
+            className={`w-full py-4 px-6 rounded-2xl font-black text-base shadow-xl transition-all ${
+              isFormValid
+                ? 'bg-amber-400 hover:bg-amber-300 text-zinc-950 shadow-amber-400/25 active:scale-[0.98] cursor-pointer'
+                : 'bg-zinc-800 text-zinc-500 border border-zinc-700/60 cursor-not-allowed opacity-60'
+            }`}
           >
             {submitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Add Product'}
           </button>

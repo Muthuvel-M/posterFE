@@ -22,6 +22,8 @@ import {
   QrCode,
   Sparkles,
   PieChart,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import { InstagramIcon } from '../components/InstagramIcon';
 import { useAuth } from '../context/AuthContext';
@@ -29,6 +31,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { api } from '../api/client';
 import { DEFAULT_FREE_OFFER, normalizeFreeOffer } from '../utils/freeOffer';
+import { isCharutaahEmail } from '../utils/businessConfig';
 import {
   ALLOCATION_KEYS,
   ALLOCATION_LABELS,
@@ -44,6 +47,7 @@ export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNaviga
   const { showToast } = useToast();
 
   const user = propUser || authUser;
+  const isCharutaah = isCharutaahEmail(user?.email);
 
   const [formData, setFormData] = useState({
     businessName: '',
@@ -71,22 +75,123 @@ export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNaviga
   const [submitting, setSubmitting] = useState(false);
   const [savingSplit, setSavingSplit] = useState(false);
 
+  const [customCategories, setCustomCategories] = useState(() => {
+    try {
+      const saved = localStorage.getItem('charutaah_weekend_split_categories');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return [
+      { id: '1', name: 'Reinvestment', percent: 25 },
+      { id: '2', name: 'Yarn & Materials', percent: 25 },
+      { id: '3', name: 'Savings', percent: 25 },
+      { id: '4', name: 'Profit / Salary', percent: 25 },
+    ];
+  });
+
+  const handleUpdateCustomCategoryName = (id, newName) => {
+    setCustomCategories((prev) =>
+      prev.map((cat) => (cat.id === id ? { ...cat, name: newName } : cat))
+    );
+  };
+
+  const handleUpdateCustomCategoryPercent = (id, newPercent) => {
+    const raw = newPercent === '' ? 0 : Number(newPercent);
+    if (Number.isNaN(raw) || raw < 0) return;
+    setCustomCategories((prev) =>
+      prev.map((cat) => (cat.id === id ? { ...cat, percent: raw } : cat))
+    );
+  };
+
+  const handleAddCustomCategory = () => {
+    setCustomCategories((prev) => [
+      ...prev,
+      { id: 'cat_' + Date.now(), name: `Category ${prev.length + 1}`, percent: 0 },
+    ]);
+  };
+
+  const handleRemoveCustomCategory = (id) => {
+    if (customCategories.length <= 1) {
+      showToast('At least one category is required', 'error');
+      return;
+    }
+    setCustomCategories((prev) => prev.filter((cat) => cat.id !== id));
+  };
+
+  const handleResetCustomEqualSplit = () => {
+    const count = customCategories.length;
+    if (count === 0) return;
+    const equalShare = Math.floor((100 / count) * 100) / 100;
+    const remainder = Math.round((100 - equalShare * count) * 100) / 100;
+    setCustomCategories((prev) =>
+      prev.map((cat, i) => ({
+        ...cat,
+        percent: i === 0 ? Math.round((equalShare + remainder) * 100) / 100 : equalShare,
+      }))
+    );
+  };
+
+  const customSplitSum = customCategories.reduce(
+    (s, c) => s + (Number(c.percent) || 0),
+    0
+  );
+  const roundedCustomSum = Math.round(customSplitSum * 100) / 100;
+  const isCustomSplitValid = Math.abs(roundedCustomSum - 100) < 0.01;
+
+  const handleSaveCustomIncomeSplit = async () => {
+    if (!isCustomSplitValid) {
+      showToast(`Percentages must sum to 100% (currently ${roundedCustomSum}%)`, 'error');
+      return;
+    }
+    try {
+      setSavingSplit(true);
+      localStorage.setItem(
+        'charutaah_weekend_split_categories',
+        JSON.stringify(customCategories)
+      );
+      const backendPayload = {
+        reinvestment: Number(customCategories[0]?.percent || 0),
+        ps5Fund: Number(customCategories[1]?.percent || 0),
+        savings: Number(customCategories[2]?.percent || 0),
+        expenses: Number(customCategories[3]?.percent || 0),
+      };
+      await api.updateIncomeSplitConfig(backendPayload).catch(() => {});
+      showToast('Weekend income split categories and percentages saved!', 'success');
+    } catch (err) {
+      showToast(err.message || 'Failed to save income split', 'error');
+    } finally {
+      setSavingSplit(false);
+    }
+  };
+
   useEffect(() => {
     if (settings) {
       setFormData((prev) => ({
         ...prev,
-        businessName: settings.businessName && !settings.businessName.includes('Muthuvel')
-          ? settings.businessName
-          : 'AuraFrame26',
+        businessName:
+          settings.businessName && !settings.businessName.includes('Muthuvel') && !settings.businessName.includes('Aura')
+            ? settings.businessName
+            : isCharutaah
+            ? 'Charutaah'
+            : 'AuraFrame26',
         paymentMode: settings.paymentMode || 'direct',
-        upiId: settings.upiId || '',
+        upiId: isCharutaah
+          ? (settings.upiId && !settings.upiId.includes('muthuvel') ? settings.upiId : '')
+          : (settings.upiId || ''),
         secondaryUpiId: settings.secondaryUpiId || '',
-        instagramUrl: settings.instagramUrl || 'https://www.instagram.com/aura.frame26/',
-        phone: settings.phone || '+91 9876543210',
-        tagline: settings.tagline || 'Posters & Custom Framing',
+        instagramUrl: isCharutaah
+          ? (settings.instagramUrl && !settings.instagramUrl.includes('aura.frame') ? settings.instagramUrl : '')
+          : (settings.instagramUrl || 'https://www.instagram.com/aura.frame26/'),
+        phone: isCharutaah
+          ? (settings.phone && !settings.phone.includes('9876543210') ? settings.phone : '')
+          : (settings.phone || '+91 9876543210'),
+        tagline: isCharutaah
+          ? (settings.tagline && !settings.tagline.toLowerCase().includes('poster') ? settings.tagline : '')
+          : (settings.tagline || 'Posters & Custom Framing'),
         address: settings.address || '',
         currency: settings.currency || 'INR',
-        receiptFooterNote: settings.receiptFooterNote || 'Thank you for shopping!',
+        receiptFooterNote: isCharutaah
+          ? (settings.receiptFooterNote && !settings.receiptFooterNote.includes('Aura') ? settings.receiptFooterNote : '')
+          : (settings.receiptFooterNote || 'Thank you for shopping!'),
         lowStockThreshold: settings.lowStockThreshold || 5,
         freeOffer: normalizeFreeOffer(settings.freeOffer),
       }));
@@ -99,7 +204,7 @@ export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNaviga
         });
       }
     }
-  }, [settings]);
+  }, [settings, isCharutaah]);
 
   useEffect(() => {
     api
@@ -218,14 +323,14 @@ export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNaviga
     }
   };
 
-  const userName = user?.name || formData.businessName || 'Muthuvel M';
-  const userEmail = user?.email || 'mmuthuvel126@gmail.com';
+  const userName = user?.name || (isCharutaah ? (formData.businessName || 'Charutaah') : (formData.businessName || 'Muthuvel M'));
+  const userEmail = user?.email || (isCharutaah ? 'Bhuvaneswaripragallapati@gmail.com' : 'mmuthuvel126@gmail.com');
   const userInitials = userName
     .split(' ')
     .map((n) => n[0])
     .join('')
     .toUpperCase()
-    .slice(0, 2) || 'MU';
+    .slice(0, 2) || (isCharutaah ? 'CH' : 'MU');
 
   const accentColors = [
     { id: 'purple', class: 'bg-[#818cf8]' },
@@ -541,91 +646,181 @@ export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNaviga
           </h2>
           <span
             className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-              splitCheck.valid
+              (isCharutaah ? isCustomSplitValid : splitCheck.valid)
                 ? 'bg-emerald-500/15 text-emerald-400'
                 : 'bg-rose-500/15 text-rose-400'
             }`}
           >
-            Total {splitSum}%
+            Total {isCharutaah ? roundedCustomSum : splitSum}%
           </span>
         </div>
 
         <div className="p-4 rounded-3xl bg-[#1c1c22] border border-zinc-800/80 space-y-3 shadow-lg">
           <p className="text-[11px] text-zinc-400 leading-relaxed">
-            Set each share on its own. The four percentages must add up to 100%, and a
-            value that would go over 100% is not accepted. Applied to Fri–Sat–Sun income
-            after each weekend; inactive days are excluded from the pool.
+            {isCharutaah
+              ? 'Set each share on its own. Add, rename, or remove categories to match your business needs. All categories must add up to 100%.'
+              : 'Set each share on its own. The four percentages must add up to 100%, and a value that would go over 100% is not accepted. Applied to Fri–Sat–Sun income after each weekend; inactive days are excluded from the pool.'}
           </p>
 
-          {ALLOCATION_KEYS.map((key) => (
-            <div key={key} className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-400 shrink-0">
-                <PieChart className="w-4 h-4" />
-              </div>
-              <div className="flex-1 flex items-center justify-between gap-3">
-                <label className="text-[10px] uppercase font-bold text-zinc-400">
-                  {ALLOCATION_LABELS[key]}
-                </label>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    step={0.01}
-                    value={incomeSplit[key]}
-                    onChange={(e) => {
-                      const raw = e.target.value === '' ? 0 : Number(e.target.value);
-                      if (Number.isNaN(raw) || raw < 0) return;
-                      const others = ALLOCATION_KEYS.reduce(
-                        (sum, allocationKey) =>
-                          allocationKey === key ? sum : sum + (Number(incomeSplit[allocationKey]) || 0),
-                        0
-                      );
-                      const maxAllowed = Math.max(0, Math.round((100 - others) * 100) / 100);
-                      const next = Math.min(raw, maxAllowed);
-                      setIncomeSplit({ ...incomeSplit, [key]: next });
-                    }}
-                    className="w-20 px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-sm font-mono text-right text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
-                  />
-                  <span className="text-xs font-bold text-zinc-500">%</span>
+          {isCharutaah ? (
+            <div className="space-y-3">
+              {customCategories.map((cat) => (
+                <div key={cat.id} className="flex items-center gap-2 sm:gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-400 shrink-0">
+                    <PieChart className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="flex-1 flex items-center justify-between gap-2">
+                    <input
+                      type="text"
+                      value={cat.name}
+                      onChange={(e) => handleUpdateCustomCategoryName(cat.id, e.target.value)}
+                      placeholder="Category name"
+                      className="flex-1 bg-zinc-900/80 border border-zinc-800/80 rounded-xl px-2.5 py-1.5 text-xs font-bold text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                    />
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.1}
+                        value={cat.percent}
+                        onChange={(e) => handleUpdateCustomCategoryPercent(cat.id, e.target.value)}
+                        className="w-16 px-2 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-mono text-right text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                      />
+                      <span className="text-xs font-bold text-zinc-500">%</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCustomCategory(cat.id)}
+                        className="p-1 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors ml-1 cursor-pointer"
+                        title="Delete category"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
+              ))}
+
+              <div className="flex items-center justify-between pt-1">
+                <button
+                  type="button"
+                  onClick={handleAddCustomCategory}
+                  className="text-[11px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ Add Category</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleResetCustomEqualSplit}
+                  className="text-[11px] font-bold text-zinc-400 hover:text-white cursor-pointer"
+                >
+                  Reset to equal split
+                </button>
+              </div>
+
+              {!isCustomSplitValid && (
+                <p className="text-[11px] font-semibold text-rose-400">
+                  Total must equal 100% (currently {roundedCustomSum}%)
+                </p>
+              )}
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  disabled={savingSplit || !isCustomSplitValid}
+                  onClick={handleSaveCustomIncomeSplit}
+                  className={`flex-1 py-2.5 rounded-2xl text-xs font-black transition-all ${
+                    isCustomSplitValid
+                      ? 'bg-amber-400 text-zinc-950 hover:bg-amber-300 cursor-pointer'
+                      : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                  }`}
+                >
+                  {savingSplit ? 'Saving…' : 'Save split %'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onNavigate && onNavigate('income-splits')}
+                  className="px-4 py-2.5 rounded-2xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-zinc-300 hover:text-white flex items-center gap-1 cursor-pointer"
+                >
+                  Open <ChevronRight className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
-          ))}
+          ) : (
+            <>
+              {ALLOCATION_KEYS.map((key) => (
+                <div key={key} className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-400 shrink-0">
+                    <PieChart className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 flex items-center justify-between gap-3">
+                    <label className="text-[10px] uppercase font-bold text-zinc-400">
+                      {ALLOCATION_LABELS[key]}
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.01}
+                        value={incomeSplit[key]}
+                        onChange={(e) => {
+                          const raw = e.target.value === '' ? 0 : Number(e.target.value);
+                          if (Number.isNaN(raw) || raw < 0) return;
+                          const others = ALLOCATION_KEYS.reduce(
+                            (sum, allocationKey) =>
+                              allocationKey === key ? sum : sum + (Number(incomeSplit[allocationKey]) || 0),
+                            0
+                          );
+                          const maxAllowed = Math.max(0, Math.round((100 - others) * 100) / 100);
+                          const next = Math.min(raw, maxAllowed);
+                          setIncomeSplit({ ...incomeSplit, [key]: next });
+                        }}
+                        className="w-20 px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-sm font-mono text-right text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                      />
+                      <span className="text-xs font-bold text-zinc-500">%</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
 
-          <button
-            type="button"
-            onClick={() => setIncomeSplit(buildEqualSplit(25))}
-            className="text-[11px] font-bold text-amber-400 hover:text-amber-300 cursor-pointer"
-          >
-            Reset to equal 25% each
-          </button>
+              <button
+                type="button"
+                onClick={() => setIncomeSplit(buildEqualSplit(25))}
+                className="text-[11px] font-bold text-amber-400 hover:text-amber-300 cursor-pointer"
+              >
+                Reset to equal 25% each
+              </button>
 
-          {!splitCheck.valid && (
-            <p className="text-[11px] font-semibold text-rose-400">{splitCheck.message}</p>
+              {!splitCheck.valid && (
+                <p className="text-[11px] font-semibold text-rose-400">{splitCheck.message}</p>
+              )}
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  disabled={savingSplit || !splitCheck.valid}
+                  onClick={handleSaveIncomeSplit}
+                  className={`flex-1 py-2.5 rounded-2xl text-xs font-black transition-all ${
+                    splitCheck.valid
+                      ? 'bg-amber-400 text-zinc-950 hover:bg-amber-300 cursor-pointer'
+                      : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                  }`}
+                >
+                  {savingSplit ? 'Saving…' : 'Save split %'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onNavigate && onNavigate('income-splits')}
+                  className="px-4 py-2.5 rounded-2xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-zinc-300 hover:text-white flex items-center gap-1 cursor-pointer"
+                >
+                  Open <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </>
           )}
-
-          <div className="flex gap-2 pt-1">
-            <button
-              type="button"
-              disabled={savingSplit || !splitCheck.valid}
-              onClick={handleSaveIncomeSplit}
-              className={`flex-1 py-2.5 rounded-2xl text-xs font-black transition-all ${
-                splitCheck.valid
-                  ? 'bg-amber-400 text-zinc-950 hover:bg-amber-300 cursor-pointer'
-                  : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
-              }`}
-            >
-              {savingSplit ? 'Saving…' : 'Save split %'}
-            </button>
-            <button
-              type="button"
-              onClick={() => onNavigate && onNavigate('income-splits')}
-              className="px-4 py-2.5 rounded-2xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-zinc-300 hover:text-white flex items-center gap-1 cursor-pointer"
-            >
-              Open <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
         </div>
       </div>
 
@@ -820,7 +1015,7 @@ export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNaviga
       {/* Footer Text */}
       <div className="text-center pt-2 pb-4">
         <p className="text-[11px] font-medium text-zinc-400">
-          AuraFrame POS v1.0.0 · Made with care
+          {isCharutaah ? 'Charutaah' : 'AuraFrame'} POS v1.0.0 · Made with care
         </p>
       </div>
     </div>

@@ -8,14 +8,23 @@ import {
   Edit2,
   PackagePlus,
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useCatalog } from '../context/CatalogContext';
 import { RestockModal } from '../components/RestockModal';
 import { ProductModal } from '../components/ProductModal';
 import { formatCurrency, getProductInitial } from '../utils/formatters';
 import { api } from '../api/client';
+import {
+  isCharutaahEmail,
+  CHARUTAAH_CATEGORIES,
+  isSizeHidden,
+} from '../utils/businessConfig';
+import crochetImg from '../assets/crochet.jpeg';
 
 export const Inventory = () => {
+  const { user } = useAuth();
+  const isCharutaah = isCharutaahEmail(user?.email);
   const { showToast } = useToast();
   const {
     products,
@@ -25,7 +34,7 @@ export const Inventory = () => {
     refreshCatalog,
   } = useCatalog();
 
-  const [activeFilter, setActiveFilter] = useState('poster'); // 'poster' | 'frame'
+  const [activeFilter, setActiveFilter] = useState(isCharutaah ? 'crochet' : 'poster');
   const [selectedProductForRestock, setSelectedProductForRestock] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -111,43 +120,62 @@ export const Inventory = () => {
         </div>
       </div>
 
-      {/* Category Chips: Poster, Frame & Sticker */}
-      <div className="flex items-center gap-2 pb-1 animate-card-in stagger-2">
-        <button
-          type="button"
-          onClick={() => setActiveFilter('poster')}
-          className={`flex-1 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
-            activeFilter === 'poster'
-              ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
-              : 'bg-[#151518] text-zinc-400 border border-zinc-800 hover:text-white'
-          }`}
-        >
-          🖼️ Poster
-        </button>
+      {/* Category Chips */}
+      <div className="flex items-center gap-1.5 pb-1 overflow-x-auto no-scrollbar animate-card-in stagger-2">
+        {isCharutaah ? (
+          CHARUTAAH_CATEGORIES.map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => setActiveFilter(cat.id)}
+              className={`py-2 px-3 rounded-2xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                activeFilter.toLowerCase() === cat.id.toLowerCase()
+                  ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
+                  : 'bg-[#151518] text-zinc-400 border border-zinc-800 hover:text-white'
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => setActiveFilter('poster')}
+              className={`flex-1 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
+                activeFilter === 'poster'
+                  ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
+                  : 'bg-[#151518] text-zinc-400 border border-zinc-800 hover:text-white'
+              }`}
+            >
+              🖼️ Poster
+            </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveFilter('frame')}
-          className={`flex-1 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
-            activeFilter === 'frame'
-              ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
-              : 'bg-[#151518] text-zinc-400 border border-zinc-800 hover:text-white'
-          }`}
-        >
-          🔲 Frame
-        </button>
+            <button
+              type="button"
+              onClick={() => setActiveFilter('frame')}
+              className={`flex-1 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
+                activeFilter === 'frame'
+                  ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
+                  : 'bg-[#151518] text-zinc-400 border border-zinc-800 hover:text-white'
+              }`}
+            >
+              🔲 Frame
+            </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveFilter('sticker')}
-          className={`flex-1 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
-            activeFilter === 'sticker'
-              ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
-              : 'bg-[#151518] text-zinc-400 border border-zinc-800 hover:text-white'
-          }`}
-        >
-          ✨ Sticker
-        </button>
+            <button
+              type="button"
+              onClick={() => setActiveFilter('sticker')}
+              className={`flex-1 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
+                activeFilter === 'sticker'
+                  ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
+                  : 'bg-[#151518] text-zinc-400 border border-zinc-800 hover:text-white'
+              }`}
+            >
+              ✨ Sticker
+            </button>
+          </>
+        )}
       </div>
 
       {/* Products List Rows */}
@@ -181,18 +209,26 @@ export const Inventory = () => {
                 <div className="flex items-center gap-3 min-w-0">
                   <GripVertical className="w-4 h-4 text-zinc-600 group-hover:text-zinc-400 shrink-0" />
 
-                  <div className="w-11 h-11 rounded-xl bg-zinc-900 border border-zinc-800 shrink-0 flex items-center justify-center">
-                    <span
-                      className={`font-black tracking-tight ${
-                        p.category === 'sticker'
-                          ? 'text-fuchsia-300 text-sm'
-                          : p.category === 'frame'
-                          ? 'text-sky-300 text-sm'
-                          : 'text-amber-300 text-sm'
-                      }`}
-                    >
-                      {getProductInitial(p)}
-                    </span>
+                  <div className="w-11 h-11 rounded-xl bg-zinc-900 border border-zinc-800 shrink-0 flex items-center justify-center overflow-hidden">
+                    {isCharutaah ? (
+                      p.image ? (
+                        <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <img src={crochetImg} alt={p.name} className="w-full h-full object-cover" />
+                      )
+                    ) : (
+                      <span
+                        className={`font-black tracking-tight ${
+                          p.category === 'sticker'
+                            ? 'text-fuchsia-300 text-sm'
+                            : p.category === 'frame'
+                            ? 'text-sky-300 text-sm'
+                            : 'text-amber-300 text-sm'
+                        }`}
+                      >
+                        {getProductInitial(p)}
+                      </span>
+                    )}
                   </div>
 
                   <div className="min-w-0">
@@ -200,7 +236,7 @@ export const Inventory = () => {
                       {p.name}
                     </h3>
                     <p className="text-[11px] text-zinc-400 truncate">
-                      {p.sku} • {p.size || 'Standard'}
+                      {p.sku} {(!isCharutaah && !isSizeHidden(p.category) && p.size) ? `• ${p.size}` : ''}
                     </p>
                   </div>
                 </div>

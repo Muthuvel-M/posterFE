@@ -14,6 +14,7 @@ import {
   Sparkles,
   RefreshCw,
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useCatalog } from '../context/CatalogContext';
 import { useToast } from '../context/ToastContext';
@@ -21,6 +22,12 @@ import { formatCurrency, getProductInitial } from '../utils/formatters';
 import { freeGroupKey, normalizeFreeOffer, paidQtyOf } from '../utils/freeOffer';
 import { discountAmount, discountTiers } from '../utils/discounts';
 import { api } from '../api/client';
+import {
+  isCharutaahEmail,
+  CHARUTAAH_CATEGORIES,
+  isSizeHidden,
+} from '../utils/businessConfig';
+import crochetImg from '../assets/crochet.jpeg';
 
 export const Checkout = ({
   customers = [],
@@ -28,6 +35,8 @@ export const Checkout = ({
   onOpenAddProduct,
   onNavigate,
 }) => {
+  const { user } = useAuth();
+  const isCharutaah = isCharutaahEmail(user?.email);
   const {
     cartItems,
     customer,
@@ -54,13 +63,14 @@ export const Checkout = ({
 
   // Wizard Steps
   const [step, setStep] = useState(1);
-  const [categoryFilter, setCategoryFilter] = useState('poster'); // 'poster' | 'frame' | 'sticker' | 'all'
+  const [categoryFilter, setCategoryFilter] = useState(isCharutaah ? 'all' : 'poster');
 
   // Step 2 Form States
   const [custName, setCustName] = useState(customer?.name || '');
   const [custPhone, setCustPhone] = useState(customer?.phone || '');
   const [discountMode, setDiscountMode] = useState('flat'); // 'percent' | 'flat'
   const [selectedChip, setSelectedChip] = useState(null);
+  const [customDiscountVal, setCustomDiscountVal] = useState('');
 
   useEffect(() => {
     if (customer) {
@@ -129,6 +139,7 @@ export const Checkout = ({
     if (mode === discountMode) return;
     setDiscountMode(mode);
     setSelectedChip(null);
+    setCustomDiscountVal('');
     setDiscount(0);
   };
 
@@ -280,55 +291,87 @@ export const Checkout = ({
             </div>
           </div>
 
-          {/* Category Tabs (Posters, Frames, Stickers, All) */}
-          <div className="flex items-center gap-2 animate-card-in stagger-2">
-            <button
-              type="button"
-              onClick={() => setCategoryFilter('poster')}
-              className={`flex-1 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
-                categoryFilter === 'poster'
-                  ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
-                  : 'bg-[#151518] text-zinc-400 border border-zinc-800 hover:text-white'
-              }`}
-            >
-              🖼️ Posters
-            </button>
+          {/* Category Tabs */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 animate-card-in stagger-2">
+            {isCharutaah ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setCategoryFilter('all')}
+                  className={`py-2 px-3 rounded-2xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                    categoryFilter === 'all'
+                      ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
+                      : 'bg-[#151518] text-zinc-400 border border-zinc-800 hover:text-white'
+                  }`}
+                >
+                  All
+                </button>
+                {CHARUTAAH_CATEGORIES.map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setCategoryFilter(cat.id)}
+                    className={`py-2 px-3 rounded-2xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                      categoryFilter === cat.id
+                        ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
+                        : 'bg-[#151518] text-zinc-400 border border-zinc-800 hover:text-white'
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setCategoryFilter('poster')}
+                  className={`flex-1 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
+                    categoryFilter === 'poster'
+                      ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
+                      : 'bg-[#151518] text-zinc-400 border border-zinc-800 hover:text-white'
+                  }`}
+                >
+                  🖼️ Posters
+                </button>
 
-            <button
-              type="button"
-              onClick={() => setCategoryFilter('frame')}
-              className={`flex-1 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
-                categoryFilter === 'frame'
-                  ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
-                  : 'bg-[#151518] text-zinc-400 border border-zinc-800 hover:text-white'
-              }`}
-            >
-              🔲 Frames
-            </button>
+                <button
+                  type="button"
+                  onClick={() => setCategoryFilter('frame')}
+                  className={`flex-1 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
+                    categoryFilter === 'frame'
+                      ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
+                      : 'bg-[#151518] text-zinc-400 border border-zinc-800 hover:text-white'
+                  }`}
+                >
+                  🔲 Frames
+                </button>
 
-            <button
-              type="button"
-              onClick={() => setCategoryFilter('sticker')}
-              className={`flex-1 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
-                categoryFilter === 'sticker'
-                  ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
-                  : 'bg-[#151518] text-zinc-400 border border-zinc-800 hover:text-white'
-              }`}
-            >
-              ✨ Stickers
-            </button>
+                <button
+                  type="button"
+                  onClick={() => setCategoryFilter('sticker')}
+                  className={`flex-1 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
+                    categoryFilter === 'sticker'
+                      ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
+                      : 'bg-[#151518] text-zinc-400 border border-zinc-800 hover:text-white'
+                  }`}
+                >
+                  ✨ Stickers
+                </button>
 
-            <button
-              type="button"
-              onClick={() => setCategoryFilter('all')}
-              className={`px-3 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
-                categoryFilter === 'all'
-                  ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
-                  : 'bg-[#151518] text-zinc-400 border border-zinc-800 hover:text-white'
-              }`}
-            >
-              All
-            </button>
+                <button
+                  type="button"
+                  onClick={() => setCategoryFilter('all')}
+                  className={`px-3 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer ${
+                    categoryFilter === 'all'
+                      ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
+                      : 'bg-[#151518] text-zinc-400 border border-zinc-800 hover:text-white'
+                  }`}
+                >
+                  All
+                </button>
+              </>
+            )}
           </div>
 
           {/* Product Cards Grid */}
@@ -381,23 +424,31 @@ export const Checkout = ({
                         : 'bg-[#16161a] hover:bg-[#1b1b22] border border-zinc-800/80 hover:border-zinc-700'
                     }`}
                   >
-                    {/* Card Visual — size / sticker initial (no product image) */}
+                    {/* Card Visual — size / sticker initial OR crochet asset image */}
                     <div className="relative w-full aspect-square bg-[#0e0e11] overflow-hidden flex items-center justify-center">
-                      <span
-                        className={`font-black tracking-tight select-none group-hover:scale-105 transition-transform duration-300 ${
-                          getProductInitial(p).length <= 2
-                            ? 'text-5xl sm:text-6xl'
-                            : 'text-4xl sm:text-5xl'
-                        } ${
-                          p.category === 'sticker'
-                            ? 'text-fuchsia-300'
-                            : p.category === 'frame'
-                            ? 'text-sky-300'
-                            : 'text-amber-300'
-                        }`}
-                      >
-                        {getProductInitial(p)}
-                      </span>
+                      {isCharutaah ? (
+                        p.image ? (
+                          <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <img src={crochetImg} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        )
+                      ) : (
+                        <span
+                          className={`font-black tracking-tight select-none group-hover:scale-105 transition-transform duration-300 ${
+                            getProductInitial(p).length <= 2
+                              ? 'text-5xl sm:text-6xl'
+                              : 'text-4xl sm:text-5xl'
+                          } ${
+                            p.category === 'sticker'
+                              ? 'text-fuchsia-300'
+                              : p.category === 'frame'
+                              ? 'text-sky-300'
+                              : 'text-amber-300'
+                          }`}
+                        >
+                          {getProductInitial(p)}
+                        </span>
+                      )}
 
                       {/* Top-Right Action: (+) Add Button vs Interactive ([-] Qty [+]) Stepper */}
                       <div className="absolute top-2.5 right-2.5 z-10">
@@ -460,7 +511,7 @@ export const Checkout = ({
                         <span className="text-sm sm:text-base font-black text-amber-400 tracking-tight">
                           {formatCurrency(p.sellPrice)}
                         </span>
-                        {p.size && (
+                        {p.size && !isCharutaah && !isSizeHidden(p.category) && (
                           <span className="text-[10px] text-zinc-400 font-semibold">{p.size}</span>
                         )}
                       </div>
@@ -496,9 +547,9 @@ export const Checkout = ({
             </div>
           )}
 
-          {/* Floating Bottom Subtotal Bar — BottomNav hidden on checkout */}
+          {/* Floating Bottom Subtotal Bar — Sits above BottomNav */}
           {itemCount > 0 && (
-            <div className="fixed above-safe-bottom left-4 right-4 max-w-xl mx-auto z-30 animate-card-in">
+            <div className="fixed above-bottom-nav left-4 right-4 max-w-xl mx-auto z-30 animate-card-in">
               <div className="p-3.5 sm:p-4 rounded-3xl bg-[#151518]/95 backdrop-blur-xl border border-zinc-800 shadow-2xl flex items-center justify-between">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
@@ -736,35 +787,85 @@ export const Checkout = ({
               </button>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
-              {discountTiers(discountMode).map((chip) => {
-                const eligible = subtotal > chip.minSubtotal;
-                const selected = selectedChip === chip.id;
-                return (
-                  <button
-                    key={chip.id}
-                    type="button"
-                    disabled={!eligible}
-                    onClick={() => handleSelectDiscountChip(chip)}
-                    title={
-                      eligible
-                        ? `Apply ${chip.label}`
-                        : `Available above ₹${chip.minSubtotal}`
+            {isCharutaah ? (
+              <div className="pt-1">
+                <div className="flex items-center gap-2 p-3 rounded-2xl bg-zinc-900 border border-zinc-800 focus-within:border-amber-400">
+                  <span className="text-sm font-bold text-amber-400">
+                    {discountMode === 'percent' ? '%' : '₹'}
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    max={discountMode === 'percent' ? 100 : subtotal}
+                    value={customDiscountVal}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setCustomDiscountVal(val);
+                      if (val === '') {
+                        setDiscount(0);
+                        return;
+                      }
+                      const num = Math.max(0, Number(val) || 0);
+                      if (discountMode === 'percent') {
+                        const capped = Math.min(100, num);
+                        setDiscount(Math.round((subtotal * capped) / 100));
+                      } else {
+                        const capped = Math.min(subtotal, num);
+                        setDiscount(capped);
+                      }
+                    }}
+                    placeholder={
+                      discountMode === 'percent'
+                        ? 'Enter discount percent (e.g. 10)'
+                        : 'Enter flat discount amount in ₹ (e.g. 50)'
                     }
-                    className={`py-3 px-2 rounded-xl text-xs font-black transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-35 ${
-                      selected
-                        ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
-                        : 'bg-[#151518] text-zinc-300 border border-zinc-800 hover:text-white'
-                    }`}
-                  >
-                    <span className="block">{chip.label}</span>
-                    <span className={`block text-[10px] font-semibold mt-0.5 ${selected ? 'text-zinc-800' : 'text-zinc-500'}`}>
-                      above ₹{chip.minSubtotal}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+                    className="flex-1 bg-transparent text-sm font-bold text-white focus:outline-none placeholder:text-zinc-600"
+                  />
+                  {customDiscountVal && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomDiscountVal('');
+                        setDiscount(0);
+                      }}
+                      className="text-xs text-zinc-500 hover:text-zinc-300 font-bold px-2 py-1 rounded-lg cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {discountTiers(discountMode).map((chip) => {
+                  const eligible = subtotal > chip.minSubtotal;
+                  const selected = selectedChip === chip.id;
+                  return (
+                    <button
+                      key={chip.id}
+                      type="button"
+                      disabled={!eligible}
+                      onClick={() => handleSelectDiscountChip(chip)}
+                      title={
+                        eligible
+                          ? `Apply ${chip.label}`
+                          : `Available above ₹${chip.minSubtotal}`
+                      }
+                      className={`py-3 px-2 rounded-xl text-xs font-black transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-35 ${
+                        selected
+                          ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
+                          : 'bg-[#151518] text-zinc-300 border border-zinc-800 hover:text-white'
+                      }`}
+                    >
+                      <span className="block">{chip.label}</span>
+                      <span className={`block text-[10px] font-semibold mt-0.5 ${selected ? 'text-zinc-800' : 'text-zinc-500'}`}>
+                        above ₹{chip.minSubtotal}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Action Button: Pay with UPI -> */}

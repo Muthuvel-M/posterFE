@@ -108,11 +108,14 @@ export const buildWhatsAppBillMessage = ({
   isCustom = false,
   deliveryDate = null,
   customNotes = '',
+  businessName = '',
+  isCharutaah = false,
 }) => {
   let text = '';
+  const brandTitle = isCharutaah || businessName === 'Charutaah' ? 'Charutaah' : (businessName || 'AuraFrame26');
 
   if (isCustom) {
-    text += `🎨 *AuraFrame26 - Custom Order Receipt*\n`;
+    text += isCharutaah ? `🧶 *Charutaah - Custom Craft Order Receipt*\n` : `🎨 *${brandTitle} - Custom Order Receipt*\n`;
     text += `━━━━━━━━━━━━━━━━━━━━━\n`;
     text += `*Order ID:* #${orderNumber}\n`;
     if (dateStr) text += `*Placed Date:* ${dateStr}\n`;
@@ -127,12 +130,18 @@ export const buildWhatsAppBillMessage = ({
       sizeTiers.forEach((tier) => {
         const count = tier.count || 1;
         const price = tier.price || tier.unitPrice || tier.posterPrice || tier.framePrice || 0;
-        const typeLabel = tier.type === 'frame' || tier.framePrice ? 'Custom Frame' : 'Poster Print';
-        text += `• *${tier.size || 'A4'} ${typeLabel}* x${count} - ₹${count * price}\n`;
+        if (isCharutaah) {
+          text += `• *${tier.name || tier.size || 'Custom Craft'}* (${tier.type || 'Crochet'}) x${count} - ₹${count * price}\n`;
+        } else {
+          const typeLabel = tier.type === 'frame' || tier.framePrice ? 'Custom Frame' : 'Poster Print';
+          text += `• *${tier.size || 'A4'} ${typeLabel}* x${count} - ₹${count * price}\n`;
+        }
       });
     } else if (Array.isArray(items) && items.length > 0) {
       items.forEach((item) => {
-        text += `• *${item.name}* (${item.size || 'A4'}) x${item.qty || 1} - ₹${(item.qty || 1) * (item.sellPrice || item.price || 0)}\n`;
+        text += isCharutaah
+          ? `• *${item.name}* x${item.qty || 1} - ₹${(item.qty || 1) * (item.sellPrice || item.price || 0)}\n`
+          : `• *${item.name}* (${item.size || 'A4'}) x${item.qty || 1} - ₹${(item.qty || 1) * (item.sellPrice || item.price || 0)}\n`;
       });
     }
 
@@ -149,7 +158,7 @@ export const buildWhatsAppBillMessage = ({
       text += `*Status:* 🟢 Fully Paid ✓\n`;
     }
   } else {
-    text += `🧾 *AuraFrame26 - Official Receipt*\n`;
+    text += isCharutaah ? `🧶 *Charutaah - Official Receipt*\n` : `🧾 *${brandTitle} - Official Receipt*\n`;
     text += `━━━━━━━━━━━━━━━━━━━━━\n`;
     text += `*Receipt:* #${orderNumber}\n`;
     if (dateStr) text += `*Date:* ${dateStr} ${timeStr ? `(${timeStr})` : ''}\n`;
@@ -158,7 +167,9 @@ export const buildWhatsAppBillMessage = ({
     text += `*ITEMS:*\n`;
 
     (items || []).forEach((item) => {
-      text += `• *${item.name}* (${item.size || 'Standard'}) x${item.qty} = ₹${item.qty * item.sellPrice}\n`;
+      text += isCharutaah
+        ? `• *${item.name}* x${item.qty} = ₹${item.qty * item.sellPrice}\n`
+        : `• *${item.name}* (${item.size || 'Standard'}) x${item.qty} = ₹${item.qty * item.sellPrice}\n`;
     });
 
     text += `━━━━━━━━━━━━━━━━━━━━━\n`;
@@ -172,8 +183,12 @@ export const buildWhatsAppBillMessage = ({
 
   text += `━━━━━━━━━━━━━━━━━━━━━\n`;
   text += `💛 *Thank you, ${customerName}!*\n`;
-  text += `Hope your walls glow with your new posters! ✨\n`;
-  text += `📸 Tag us *@aura.frame26* on Instagram`;
+  if (isCharutaah) {
+    text += `Handcrafted with love by Charutaah! 🧶✨`;
+  } else {
+    text += `Hope your walls glow with your new posters! ✨\n`;
+    text += `📸 Tag us *@aura.frame26* on Instagram`;
+  }
 
   return text;
 };
@@ -200,13 +215,16 @@ export const shareReceiptOnWhatsApp = async ({
   isCustom = false,
   deliveryDate = null,
   customNotes = '',
+  businessName = '',
+  isCharutaah = false,
   showToast = () => {},
 }) => {
   try {
     showToast('Generating high-res PDF bill...', 'info');
 
     const cleanOrderNum = String(orderNumber).replace(/[^a-zA-Z0-9_-]/g, '');
-    const filename = `AuraFrame26_Receipt_${cleanOrderNum}.pdf`;
+    const brandPrefix = isCharutaah || businessName === 'Charutaah' ? 'Charutaah' : 'AuraFrame26';
+    const filename = `${brandPrefix}_Receipt_${cleanOrderNum}.pdf`;
 
     // 1. Generate & download crisp unclipped PDF
     const { pdf, canvas } = await generateReceiptPDF(elementId, filename);
@@ -267,6 +285,8 @@ export const shareReceiptOnWhatsApp = async ({
       isCustom,
       deliveryDate,
       customNotes,
+      businessName,
+      isCharutaah,
     });
 
     const encodedMsg = encodeURIComponent(waMsgText);

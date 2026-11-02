@@ -160,17 +160,22 @@ export const generateWhatsAppReceiptUrl = (sale, settings) => {
     targetPhone = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone.slice(-10)}`;
   }
 
-  let msg = `Thank you, ${customerName}! 💛\n`;
-  msg += `Your AuraFrame order is confirmed, and your receipt is attached. 🧾\n`;
-  msg += `Hope your walls glow with your new posters! ✨\n`;
-  msg += `Tag us @aura.frame26 when you put them up 📸\n\n`;
+  const isCharutaah = settings?.businessName === 'Charutaah' ||
+    (sale.items || []).some(it => ['crochet', 'keychains', 'charms', 'clips', 'flowers'].includes(it.category?.toLowerCase()));
+
+  let msg = isCharutaah
+    ? `Thank you, ${customerName}! 🧶💛\nYour Charutaah handmade craft order is confirmed, and your receipt is attached. 🧾\nCrafted with love & care just for you! ✨\n\n`
+    : `Thank you, ${customerName}! 💛\nYour AuraFrame order is confirmed, and your receipt is attached. 🧾\nHope your walls glow with your new posters! ✨\nTag us @aura.frame26 when you put them up 📸\n\n`;
+
   msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
-  msg += `🧾 *RECEIPT #${sale.saleNumber || 'INV-001'}*\n`;
+  msg += isCharutaah ? `🧶 *CHARUTAAH RECEIPT #${sale.saleNumber || 'INV-001'}*\n` : `🧾 *RECEIPT #${sale.saleNumber || 'INV-001'}*\n`;
   msg += `📅 *Date:* ${formatDateTime(sale.createdAt || new Date())}\n`;
   msg += `🛍️ *Order Items:*\n`;
 
   (sale.items || []).forEach((item) => {
-    msg += `• ${item.name} (${item.size || 'Standard'}) × ${item.qty} — ₹${item.qty * item.sellPrice}\n`;
+    msg += isCharutaah
+      ? `• ${item.name} × ${item.qty} — ₹${item.qty * item.sellPrice}\n`
+      : `• ${item.name} (${item.size || 'Standard'}) × ${item.qty} — ₹${item.qty * item.sellPrice}\n`;
   });
 
   msg += `─────────────────────\n`;
@@ -182,7 +187,7 @@ export const generateWhatsAppReceiptUrl = (sale, settings) => {
   msg += `Payment Mode: ${(sale.paymentMethod || 'UPI').toUpperCase()}\n`;
   msg += `Status: PAID ✓\n`;
   msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
-  msg += `Instagram: @aura.frame26`;
+  msg += isCharutaah ? `Charutaah - Handmade Crafts & Gifts 🧶` : `Instagram: @aura.frame26`;
 
   const encodedText = encodeURIComponent(msg);
   if (targetPhone) {
@@ -216,12 +221,16 @@ export const generateCustomOrderWhatsAppReceiptUrl = (order, settings) => {
   const placedDate = order.orderDate ? formatDate(order.orderDate) : formatDate(order.createdAt || new Date());
   const deliveryDate = order.deliveryDate ? formatDate(order.deliveryDate) : formatDate(order.dueDate);
 
-  let msg = `Thank you, ${customerName}! 💛\n`;
-  msg += `Your AuraFrame custom order is confirmed, and your receipt is attached. 🧾\n`;
-  msg += `Hope your walls glow with your new posters! ✨\n`;
-  msg += `Tag us @aura.frame26 when you put them up 📸\n\n`;
+  const isCharutaah = settings?.businessName === 'Charutaah' ||
+    (order.itemTypes || []).some(t => ['crochet', 'keychains', 'charms', 'clips', 'flowers'].includes(t)) ||
+    ['crochet', 'keychains', 'charms', 'clips', 'flowers'].includes(order.itemType);
+
+  let msg = isCharutaah
+    ? `Thank you, ${customerName}! 🧶💛\nYour Charutaah custom handmade craft order is confirmed, and your receipt is attached. 🧾\nCrafted with love & care just for you! ✨\n\n`
+    : `Thank you, ${customerName}! 💛\nYour AuraFrame custom order is confirmed, and your receipt is attached. 🧾\nHope your walls glow with your new posters! ✨\nTag us @aura.frame26 when you put them up 📸\n\n`;
+
   msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
-  msg += `🧾 *CUSTOM ORDER #${orderNum}*\n`;
+  msg += isCharutaah ? `🧶 *CUSTOM CRAFT ORDER #${orderNum}*\n` : `🧾 *CUSTOM ORDER #${orderNum}*\n`;
   msg += `📦 *Order:* ${orderTitle}\n`;
   msg += `📅 *Placed Date:* ${placedDate}\n`;
   if (deliveryDate && deliveryDate !== '-') {
@@ -229,34 +238,44 @@ export const generateCustomOrderWhatsAppReceiptUrl = (order, settings) => {
   }
   msg += `\n`;
 
-  // Posters
-  const posterTiers = Array.isArray(order.posterTiers) && order.posterTiers.length > 0
-    ? order.posterTiers
-    : (Array.isArray(order.sizeTiers) ? order.sizeTiers.filter((st) => st.type === 'poster' || (st.posterPrice && Number(st.posterPrice) > 0)) : []);
-
-  if (posterTiers.length > 0) {
-    msg += `🎨 *Poster Sizes:*\n`;
-    posterTiers.forEach((pt) => {
-      const count = Number(pt.count) || 1;
-      const price = Number(pt.price) || Number(pt.posterPrice) || 0;
-      msg += `• ${count}× ${pt.size || 'A4'} — ₹${count * price}\n`;
+  if (isCharutaah && Array.isArray(order.sizeTiers) && order.sizeTiers.length > 0) {
+    msg += `🧶 *Custom Items:*\n`;
+    order.sizeTiers.forEach((st) => {
+      const count = Number(st.count) || 1;
+      const price = Number(st.price) || Number(st.unitPrice) || 0;
+      msg += `• ${count}× ${st.name || st.size || 'Craft Item'} (${st.type || 'Crochet'}) — ₹${count * price}\n`;
     });
     msg += `\n`;
-  }
+  } else {
+    // Posters
+    const posterTiers = Array.isArray(order.posterTiers) && order.posterTiers.length > 0
+      ? order.posterTiers
+      : (Array.isArray(order.sizeTiers) ? order.sizeTiers.filter((st) => st.type === 'poster' || (st.posterPrice && Number(st.posterPrice) > 0)) : []);
 
-  // Frames
-  const frameTiers = Array.isArray(order.frameTiers) && order.frameTiers.length > 0
-    ? order.frameTiers
-    : (Array.isArray(order.sizeTiers) ? order.sizeTiers.filter((st) => st.type === 'frame' || (st.framePrice && Number(st.framePrice) > 0)) : []);
+    if (posterTiers.length > 0) {
+      msg += `🎨 *Poster Sizes:*\n`;
+      posterTiers.forEach((pt) => {
+        const count = Number(pt.count) || 1;
+        const price = Number(pt.price) || Number(pt.posterPrice) || 0;
+        msg += `• ${count}× ${pt.size || 'A4'} — ₹${count * price}\n`;
+      });
+      msg += `\n`;
+    }
 
-  if (frameTiers.length > 0) {
-    msg += `🔲 *Frame Sizes:*\n`;
-    frameTiers.forEach((ft) => {
-      const count = Number(ft.count) || 1;
-      const price = Number(ft.price) || Number(ft.framePrice) || 0;
-      msg += `• ${count}× ${ft.size || 'A4'} — ₹${count * price}\n`;
-    });
-    msg += `\n`;
+    // Frames
+    const frameTiers = Array.isArray(order.frameTiers) && order.frameTiers.length > 0
+      ? order.frameTiers
+      : (Array.isArray(order.sizeTiers) ? order.sizeTiers.filter((st) => st.type === 'frame' || (st.framePrice && Number(st.framePrice) > 0)) : []);
+
+    if (frameTiers.length > 0) {
+      msg += `🔲 *Frame Sizes:*\n`;
+      frameTiers.forEach((ft) => {
+        const count = Number(ft.count) || 1;
+        const price = Number(ft.price) || Number(ft.framePrice) || 0;
+        msg += `• ${count}× ${ft.size || 'A4'} — ₹${count * price}\n`;
+      });
+      msg += `\n`;
+    }
   }
 
   const totalPrice = Number(order.pricing?.totalPrice) || 0;
@@ -270,7 +289,7 @@ export const generateCustomOrderWhatsAppReceiptUrl = (order, settings) => {
   msg += `Payment Status: ${(order.paymentStatus || 'pending').toUpperCase()}\n`;
   msg += `Order Status: ${(order.orderStatus || 'received').toUpperCase()}\n`;
   msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
-  msg += `Instagram: @aura.frame26`;
+  msg += isCharutaah ? `Charutaah - Handmade Crafts & Gifts 🧶` : `Instagram: @aura.frame26`;
 
   const encodedText = encodeURIComponent(msg);
   if (targetPhone) {
@@ -284,13 +303,17 @@ export const generateCustomOrderWhatsAppReceiptUrl = (order, settings) => {
  */
 export const generateReceiptHTML = (sale, settings) => {
   if (!sale) return '';
+  const isCharutaah = settings?.businessName === 'Charutaah' ||
+    (sale.items || []).some(it => ['crochet', 'keychains', 'charms', 'clips', 'flowers'].includes(it.category?.toLowerCase()));
+
   const customerName =
     sale.customerSnapshot?.name || sale.customer?.name || sale.customerName || 'Walk-in Customer';
   const saleNumber = sale.saleNumber || 'INV-0001';
-  const businessName =
-    settings?.businessName && !settings.businessName.includes('Muthuvel')
-      ? settings.businessName
-      : 'AuraFrame26';
+  const businessName = isCharutaah
+    ? 'Charutaah'
+    : settings?.businessName && !settings.businessName.includes('Muthuvel')
+    ? settings.businessName
+    : 'AuraFrame26';
   
   const saleDate = sale.createdAt ? new Date(sale.createdAt) : new Date();
   const dateStr = saleDate.toLocaleDateString('en-GB', {
@@ -310,7 +333,7 @@ export const generateReceiptHTML = (sale, settings) => {
       <tr style="border-bottom: 1px solid #f1f5f9;">
         <td style="padding: 10px 0; text-align: left; vertical-align: top;">
           <div style="font-weight: 700; font-size: 13px; color: #0f172a;">${item.name}</div>
-          <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Size: ${item.size || 'Standard'} &times; ${item.qty}</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 2px;">${isCharutaah ? `Qty: ${item.qty}` : `Size: ${item.size || 'Standard'} &times; ${item.qty}`}</div>
         </td>
         <td style="padding: 10px 0; text-align: right; vertical-align: top; font-weight: 700; font-size: 13px; color: #0f172a; font-family: monospace;">
           &#8377;${item.qty * item.sellPrice}
@@ -411,8 +434,8 @@ export const generateReceiptHTML = (sale, settings) => {
 <body>
   <div class="receipt-card">
     <div class="header">
-      <div class="brand-title">AuraFrame</div>
-      <div class="brand-sub">Posters &middot; Framing &middot; Art Decor</div>
+      <div class="brand-title">${businessName}</div>
+      <div class="brand-sub">${isCharutaah ? 'Handmade Crochet &middot; Accessories &middot; Gifts' : 'Posters &middot; Framing &middot; Art Decor'}</div>
     </div>
 
     <hr class="divider" />
@@ -469,9 +492,9 @@ export const generateReceiptHTML = (sale, settings) => {
     </div>
 
     <div class="footer-msg">
-      <div>Thank you, <strong>${customerName}</strong>! &#128155;</div>
-      <div>Hope your walls glow with your new posters! &#10024;</div>
-      <span class="footer-tag">Tag us @aura.frame26 when you put them up &#128248;</span>
+      <div>Thank you, <strong>${customerName}</strong>! ${isCharutaah ? '&#129526;&#128155;' : '&#128155;'}</div>
+      <div>${isCharutaah ? 'Crafted with love & care by Charutaah!' : 'Hope your walls glow with your new posters!'} &#10024;</div>
+      ${!isCharutaah ? '<span class="footer-tag">Tag us @aura.frame26 when you put them up &#128248;</span>' : ''}
     </div>
   </div>
 </body>
@@ -490,12 +513,16 @@ export const getCustomOrderReceiptText = (order, settings) => {
   const placedDate = order.orderDate ? formatDate(order.orderDate) : formatDate(order.createdAt || new Date());
   const deliveryDate = order.deliveryDate ? formatDate(order.deliveryDate) : formatDate(order.dueDate);
 
-  let msg = `Thank you, ${customerName}! 💛\n`;
-  msg += `Your AuraFrame custom order is confirmed, and your receipt is attached. 🧾\n`;
-  msg += `Hope your walls glow with your new posters! ✨\n`;
-  msg += `Tag us @aura.frame26 when you put them up 📸\n\n`;
+  const isCharutaah = settings?.businessName === 'Charutaah' ||
+    (order.itemTypes || []).some(t => ['crochet', 'keychains', 'charms', 'clips', 'flowers'].includes(t)) ||
+    ['crochet', 'keychains', 'charms', 'clips', 'flowers'].includes(order.itemType);
+
+  let msg = isCharutaah
+    ? `Thank you, ${customerName}! 🧶💛\nYour Charutaah custom handmade craft order is confirmed, and your receipt is attached. 🧾\nCrafted with love & care just for you! ✨\n\n`
+    : `Thank you, ${customerName}! 💛\nYour AuraFrame custom order is confirmed, and your receipt is attached. 🧾\nHope your walls glow with your new posters! ✨\nTag us @aura.frame26 when you put them up 📸\n\n`;
+
   msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
-  msg += `🧾 *CUSTOM ORDER #${orderNum}*\n`;
+  msg += isCharutaah ? `🧶 *CUSTOM CRAFT ORDER #${orderNum}*\n` : `🧾 *CUSTOM ORDER #${orderNum}*\n`;
   msg += `📦 *Order:* ${orderTitle}\n`;
   msg += `📅 *Placed Date:* ${placedDate}\n`;
   if (deliveryDate && deliveryDate !== '-') {
@@ -503,34 +530,44 @@ export const getCustomOrderReceiptText = (order, settings) => {
   }
   msg += `\n`;
 
-  // Posters
-  const posterTiers = Array.isArray(order.posterTiers) && order.posterTiers.length > 0
-    ? order.posterTiers
-    : (Array.isArray(order.sizeTiers) ? order.sizeTiers.filter((st) => st.type === 'poster' || (st.posterPrice && Number(st.posterPrice) > 0)) : []);
-
-  if (posterTiers.length > 0) {
-    msg += `🎨 *Poster Sizes:*\n`;
-    posterTiers.forEach((pt) => {
-      const count = Number(pt.count) || 1;
-      const price = Number(pt.price) || Number(pt.posterPrice) || 0;
-      msg += `• ${count}× ${pt.size || 'A4'} — ₹${count * price}\n`;
+  if (isCharutaah && Array.isArray(order.sizeTiers) && order.sizeTiers.length > 0) {
+    msg += `🧶 *Custom Items:*\n`;
+    order.sizeTiers.forEach((st) => {
+      const count = Number(st.count) || 1;
+      const price = Number(st.price) || Number(st.unitPrice) || 0;
+      msg += `• ${count}× ${st.name || st.size || 'Craft Item'} (${st.type || 'Crochet'}) — ₹${count * price}\n`;
     });
     msg += `\n`;
-  }
+  } else {
+    // Posters
+    const posterTiers = Array.isArray(order.posterTiers) && order.posterTiers.length > 0
+      ? order.posterTiers
+      : (Array.isArray(order.sizeTiers) ? order.sizeTiers.filter((st) => st.type === 'poster' || (st.posterPrice && Number(st.posterPrice) > 0)) : []);
 
-  // Frames
-  const frameTiers = Array.isArray(order.frameTiers) && order.frameTiers.length > 0
-    ? order.frameTiers
-    : (Array.isArray(order.sizeTiers) ? order.sizeTiers.filter((st) => st.type === 'frame' || (st.framePrice && Number(st.framePrice) > 0)) : []);
+    if (posterTiers.length > 0) {
+      msg += `🎨 *Poster Sizes:*\n`;
+      posterTiers.forEach((pt) => {
+        const count = Number(pt.count) || 1;
+        const price = Number(pt.price) || Number(pt.posterPrice) || 0;
+        msg += `• ${count}× ${pt.size || 'A4'} — ₹${count * price}\n`;
+      });
+      msg += `\n`;
+    }
 
-  if (frameTiers.length > 0) {
-    msg += `🔲 *Frame Sizes:*\n`;
-    frameTiers.forEach((ft) => {
-      const count = Number(ft.count) || 1;
-      const price = Number(ft.price) || Number(ft.framePrice) || 0;
-      msg += `• ${count}× ${ft.size || 'A4'} — ₹${count * price}\n`;
-    });
-    msg += `\n`;
+    // Frames
+    const frameTiers = Array.isArray(order.frameTiers) && order.frameTiers.length > 0
+      ? order.frameTiers
+      : (Array.isArray(order.sizeTiers) ? order.sizeTiers.filter((st) => st.type === 'frame' || (st.framePrice && Number(st.framePrice) > 0)) : []);
+
+    if (frameTiers.length > 0) {
+      msg += `🔲 *Frame Sizes:*\n`;
+      frameTiers.forEach((ft) => {
+        const count = Number(ft.count) || 1;
+        const price = Number(ft.price) || Number(ft.framePrice) || 0;
+        msg += `• ${count}× ${ft.size || 'A4'} — ₹${count * price}\n`;
+      });
+      msg += `\n`;
+    }
   }
 
   if (order.customNotes) {
@@ -549,7 +586,7 @@ export const getCustomOrderReceiptText = (order, settings) => {
   msg += `Payment Status: ${(order.paymentStatus || 'pending').toUpperCase()}\n`;
   msg += `Order Status: ${(order.orderStatus || 'received').toUpperCase()}\n`;
   msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
-  msg += `Instagram: @aura.frame26`;
+  msg += isCharutaah ? `Charutaah - Handmade Crafts & Gifts 🧶` : `Instagram: @aura.frame26`;
 
   return msg;
 };
@@ -559,14 +596,19 @@ export const getCustomOrderReceiptText = (order, settings) => {
  */
 export const generateCustomOrderReceiptHTML = (order, settings) => {
   if (!order) return '';
+  const isCharutaah = settings?.businessName === 'Charutaah' ||
+    (order.itemTypes || []).some(t => ['crochet', 'keychains', 'charms', 'clips', 'flowers'].includes(t)) ||
+    ['crochet', 'keychains', 'charms', 'clips', 'flowers'].includes(order.itemType);
+
   const customerName =
     order.customerSnapshot?.name || order.customer?.name || order.customerName || 'Walk-in Customer';
   const orderNum = order.orderNumber || 'AF-CUST';
   const orderTitle = order.title || 'Custom Order';
-  const businessName =
-    settings?.businessName && !settings.businessName.includes('Muthuvel')
-      ? settings.businessName
-      : 'AuraFrame26';
+  const businessName = isCharutaah
+    ? 'Charutaah'
+    : settings?.businessName && !settings.businessName.includes('Muthuvel')
+    ? settings.businessName
+    : 'AuraFrame26';
   const placedDate = order.orderDate ? formatDate(order.orderDate) : formatDate(order.createdAt || new Date());
   const deliveryDate = order.deliveryDate ? formatDate(order.deliveryDate) : (order.dueDate ? formatDate(order.dueDate) : '');
 
@@ -826,9 +868,9 @@ export const generateCustomOrderReceiptHTML = (order, settings) => {
     </div>
 
     <div class="footer-msg">
-      <div>Thank you, <strong>${customerName}</strong>! &#128155;</div>
-      <div>Hope your walls glow with your custom prints! &#10024;</div>
-      <span class="footer-tag">Tag us @aura.frame26 when you put them up &#128248;</span>
+      <div>Thank you, <strong>${customerName}</strong>! ${isCharutaah ? '&#129526;&#128155;' : '&#128155;'}</div>
+      <div>${isCharutaah ? 'Handcrafted with love by Charutaah!' : 'Hope your walls glow with your custom prints!'} &#10024;</div>
+      ${!isCharutaah ? '<span class="footer-tag">Tag us @aura.frame26 when you put them up &#128248;</span>' : ''}
     </div>
   </div>
 </body>

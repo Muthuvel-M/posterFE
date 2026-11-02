@@ -20,6 +20,7 @@ import {
 import { InstagramIcon } from '../components/InstagramIcon';
 import { useCatalog } from '../context/CatalogContext';
 import { formatCurrency, formatDateTime } from '../utils/formatters';
+import { isCharutaahEmail } from '../utils/businessConfig';
 
 export const HomeBento = ({
   user,
@@ -49,7 +50,10 @@ export const HomeBento = ({
   const activeProductsCount = products.length;
   const lowStockCount = products.filter((p) => (p.stock || 0) <= (p.lowStockThreshold ?? 10)).length;
 
-  const userName = user?.name && !user.name.includes('Muthuvel') ? user.name : 'AuraFrame26';
+  const isCharutaah = isCharutaahEmail(user?.email);
+  const userName = isCharutaah
+    ? (user?.name || 'Charutaah')
+    : (user?.name && !user.name.includes('Muthuvel') ? user.name : 'AuraFrame26');
 
   return (
     <div className="max-w-xl mx-auto px-4 sm:px-6 py-5 pb-32 space-y-6 text-white">
