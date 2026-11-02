@@ -19,11 +19,13 @@ import {
 } from 'lucide-react';
 import { InstagramIcon } from '../components/InstagramIcon';
 import { useCatalog } from '../context/CatalogContext';
+import { useToast } from '../context/ToastContext';
 import { formatCurrency, formatDateTime } from '../utils/formatters';
 import { isCharutaahEmail } from '../utils/businessConfig';
 
 export const HomeBento = ({
   user,
+  settings,
   onNavigate,
   onOpenAddProduct,
   onOpenRawMaterial,
@@ -31,6 +33,7 @@ export const HomeBento = ({
   onOpenReceipt,
   onOpenInstagramQR,
 }) => {
+  const { showToast } = useToast();
   const { products, todaySummary, recentSales, dashboardCounts } = useCatalog();
   const customStats = dashboardCounts?.customOrders || {
     total: 0,
@@ -55,6 +58,21 @@ export const HomeBento = ({
     ? (user?.name || 'Charutaah')
     : (user?.name && !user.name.includes('Muthuvel') ? user.name : 'AuraFrame26');
 
+  const charutaahHasInsta = isCharutaah
+    ? Boolean(settings?.instagramUrl && !settings.instagramUrl.includes('aura.frame') && settings.instagramUrl.trim() !== '')
+    : true;
+
+  const handleInstagramClick = () => {
+    if (isCharutaah && !charutaahHasInsta) {
+      showToast('Please add your Instagram link in Settings', 'info');
+      if (onNavigate) {
+        onNavigate('settings');
+      }
+      return;
+    }
+    onOpenInstagramQR();
+  };
+
   return (
     <div className="max-w-xl mx-auto px-4 sm:px-6 py-5 pb-32 space-y-6 text-white">
       {/* Top Header */}
@@ -70,9 +88,9 @@ export const HomeBento = ({
           </div>
         </div>
 
-        {/* Instagram Squircle Button (Opens Instagram QR Modal) */}
+        {/* Instagram Squircle Button (Opens Instagram QR Modal or redirects if link missing) */}
         <button
-          onClick={onOpenInstagramQR}
+          onClick={handleInstagramClick}
           className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white flex items-center justify-center shadow-lg shadow-pink-500/20 ring-2 ring-zinc-800 hover:scale-105 active:scale-95 transition-all cursor-pointer"
           title="View Instagram Profile QR"
           aria-label="View Instagram Profile QR"

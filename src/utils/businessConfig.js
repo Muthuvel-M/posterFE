@@ -3,6 +3,9 @@ import defaultLogoImg from '../assets/2.png';
 import charutaahLogoImg from '../assets/charutaah_logo.jpg';
 
 export const CHARUTAAH_EMAIL = 'bhuvaneswaripragallapati@gmail.com';
+export const CHARUTAAH_INSTAGRAM_URL =
+  'https://www.instagram.com/charutaah.in?mdxt=MWdwZHFkcXEzd2Fvcg%3D%3D&utm_source=qr';
+export const CHARUTAAH_INSTAGRAM_HANDLE = '@charutaah.in';
 
 export const isCharutaahEmail = (email) => {
   if (!email || typeof email !== 'string') return false;
@@ -68,7 +71,8 @@ export const getBusinessBranding = (email, settings = {}) => {
       phone: settings?.phone || '',
       upiId: settings?.upiId || '',
       secondaryUpiId: settings?.secondaryUpiId || '',
-      instagramUrl: settings?.instagramUrl || '',
+      instagramUrl: settings?.instagramUrl !== undefined ? settings.instagramUrl : CHARUTAAH_INSTAGRAM_URL,
+      instagramHandle: CHARUTAAH_INSTAGRAM_HANDLE,
       receiptFooterNote: settings?.receiptFooterNote || 'Thank you for shopping with Charutaah!',
     };
   }

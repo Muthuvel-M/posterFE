@@ -31,7 +31,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { api } from '../api/client';
 import { DEFAULT_FREE_OFFER, normalizeFreeOffer } from '../utils/freeOffer';
-import { isCharutaahEmail } from '../utils/businessConfig';
+import { isCharutaahEmail, CHARUTAAH_INSTAGRAM_URL } from '../utils/businessConfig';
 import {
   ALLOCATION_KEYS,
   ALLOCATION_LABELS,
@@ -494,14 +494,25 @@ export const Settings = ({ user: propUser, settings, onSettingsUpdated, onNaviga
               <InstagramIcon className="w-4 h-4" />
             </div>
             <div className="flex-1">
-              <label className="text-[10px] uppercase font-bold text-zinc-400 block mb-0.5">
-                Instagram Link
-              </label>
+              <div className="flex items-center justify-between mb-0.5">
+                <label className="text-[10px] uppercase font-bold text-zinc-400 block">
+                  Instagram Link
+                </label>
+                {isCharutaah && !formData.instagramUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, instagramUrl: CHARUTAAH_INSTAGRAM_URL })}
+                    className="text-[10px] text-amber-400 hover:text-amber-300 font-semibold underline cursor-pointer"
+                  >
+                    Use @charutaah.in link
+                  </button>
+                )}
+              </div>
               <input
                 type="url"
                 value={formData.instagramUrl}
                 onChange={(e) => setFormData({ ...formData, instagramUrl: e.target.value })}
-                placeholder="https://www.instagram.com/aura.frame26/"
+                placeholder={isCharutaah ? 'https://www.instagram.com/charutaah.in' : 'https://www.instagram.com/aura.frame26/'}
                 className="w-full bg-transparent text-sm text-zinc-200 focus:outline-none placeholder:text-zinc-600"
               />
             </div>

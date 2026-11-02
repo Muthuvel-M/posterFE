@@ -1,21 +1,40 @@
 import React, { useState } from 'react';
-import { X, ExternalLink, Copy, Check, Share2 } from 'lucide-react';
+import { X, ExternalLink, Copy, Check, Share2, Settings as SettingsIcon } from 'lucide-react';
 import { InstagramIcon } from './InstagramIcon';
 import { useModalAnimation } from '../hooks/useModalAnimation';
 import { useToast } from '../context/ToastContext';
 import instaQrImg from '../assets/IMG_4155.jpg';
+import charutaahQrImg from '../assets/charutaah_instagram_qr.png';
+import { isCharutaahEmail, CHARUTAAH_INSTAGRAM_URL, CHARUTAAH_INSTAGRAM_HANDLE } from '../utils/businessConfig';
 
-export const InstagramQRModal = ({ isOpen, onClose, settings, user }) => {
+export const InstagramQRModal = ({ isOpen, onClose, settings, user, onNavigate }) => {
   const { showToast } = useToast();
   const [copied, setCopied] = useState(false);
   const { shouldRender, isClosing, requestClose } = useModalAnimation(isOpen, onClose);
 
   if (!shouldRender) return null;
 
-  const instagramUrl = settings?.instagramUrl || 'https://www.instagram.com/aura.frame26/';
-  const handle = '@aura.frame26';
+  const isCharutaah = isCharutaahEmail(user?.email);
+  const brandName = isCharutaah ? 'Charutaah' : 'AuraFrame26';
+
+  // For Charutaah: if user explicitly saved empty string, link is missing. Otherwise default to Charutaah's link.
+  const isLinkExplicitlyEmpty = isCharutaah && settings?.instagramUrl === '';
+  const instagramUrl = isLinkExplicitlyEmpty
+    ? ''
+    : isCharutaah
+    ? (settings?.instagramUrl && !settings.instagramUrl.includes('aura.frame')
+        ? settings.instagramUrl
+        : CHARUTAAH_INSTAGRAM_URL)
+    : (settings?.instagramUrl || 'https://www.instagram.com/aura.frame26/');
+
+  const handle = isCharutaah ? CHARUTAAH_INSTAGRAM_HANDLE : '@aura.frame26';
+  const qrImageSrc = isCharutaah ? charutaahQrImg : instaQrImg;
 
   const handleCopyLink = async () => {
+    if (!instagramUrl) {
+      showToast('No Instagram link to copy', 'error');
+      return;
+    }
     try {
       await navigator.clipboard.writeText(instagramUrl);
       setCopied(true);
@@ -27,11 +46,17 @@ export const InstagramQRModal = ({ isOpen, onClose, settings, user }) => {
   };
 
   const handleShare = async () => {
+    if (!instagramUrl) {
+      showToast('No Instagram link to share', 'error');
+      return;
+    }
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'AuraFrame26 Instagram Profile',
-          text: 'Check out AuraFrame26 for premium posters & custom framing!',
+          title: `${brandName} Instagram Profile`,
+          text: isCharutaah
+            ? 'Check out Charutaah for handmade crochet creations & custom crafts!'
+            : 'Check out AuraFrame26 for premium posters & custom framing!',
           url: instagramUrl,
         });
       } catch (e) {
@@ -39,6 +64,13 @@ export const InstagramQRModal = ({ isOpen, onClose, settings, user }) => {
       }
     } else {
       handleCopyLink();
+    }
+  };
+
+  const handleGoToSettings = () => {
+    requestClose();
+    if (onNavigate) {
+      onNavigate('settings');
     }
   };
 
@@ -93,50 +125,66 @@ export const InstagramQRModal = ({ isOpen, onClose, settings, user }) => {
         {/* QR Code Container with High-Res Image & Glass Border */}
         <div className="relative p-3.5 bg-white/95 rounded-[28px] shadow-[0_15px_35px_rgba(0,0,0,0.45)] flex flex-col items-center justify-center mb-4 overflow-hidden max-w-[240px] w-full aspect-square ring-4 ring-white/25">
           <img
-            src={instaQrImg}
-            alt="Instagram QR @aura.frame26"
+            src={qrImageSrc}
+            alt={`Instagram QR ${handle}`}
             className="w-full h-full object-contain rounded-2xl"
           />
         </div>
 
         {/* Liquid Action Buttons Grid */}
-        <div className="w-full space-y-2">
-          {/* Direct Link Action Button */}
-          <a
-            href={instagramUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-[#f09433] via-[#dc2743] to-[#bc1888] hover:opacity-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-[0_8px_25px_rgba(220,39,67,0.35)] active:scale-95 transition-all cursor-pointer border border-white/20"
-          >
-            <span>Open Profile on Instagram</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </a>
+        {instagramUrl ? (
+          <div className="w-full space-y-2">
+            {/* Direct Link Action Button */}
+            <a
+              href={instagramUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-[#f09433] via-[#dc2743] to-[#bc1888] hover:opacity-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-[0_8px_25px_rgba(220,39,67,0.35)] active:scale-95 transition-all cursor-pointer border border-white/20"
+            >
+              <span>Open Profile on Instagram</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
 
-          {/* Copy Link & Share in Liquid Glass Buttons */}
-          <div className="grid grid-cols-2 gap-2">
+            {/* Copy Link & Share in Liquid Glass Buttons */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="py-2.5 px-3 rounded-2xl bg-white/[0.08] hover:bg-white/[0.15] border border-white/15 text-white/90 hover:text-white font-bold text-xs flex items-center justify-center gap-1.5 backdrop-blur-md active:scale-95 transition-all cursor-pointer"
+              >
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copied ? 'Copied' : 'Copy Link'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleShare}
+                className="py-2.5 px-3 rounded-2xl bg-white/[0.08] hover:bg-white/[0.15] border border-white/15 text-white/90 hover:text-white font-bold text-xs flex items-center justify-center gap-1.5 backdrop-blur-md active:scale-95 transition-all cursor-pointer"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                <span>Share QR</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="w-full my-1 p-3.5 rounded-2xl bg-white/10 border border-white/20 text-center space-y-2">
+            <p className="text-xs text-zinc-300 font-semibold">
+              Instagram profile link not configured yet.
+            </p>
             <button
               type="button"
-              onClick={handleCopyLink}
-              className="py-2.5 px-3 rounded-2xl bg-white/[0.08] hover:bg-white/[0.15] border border-white/15 text-white/90 hover:text-white font-bold text-xs flex items-center justify-center gap-1.5 backdrop-blur-md active:scale-95 transition-all cursor-pointer"
+              onClick={handleGoToSettings}
+              className="w-full py-2.5 px-4 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
             >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copied ? 'Copied' : 'Copy Link'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleShare}
-              className="py-2.5 px-3 rounded-2xl bg-white/[0.08] hover:bg-white/[0.15] border border-white/15 text-white/90 hover:text-white font-bold text-xs flex items-center justify-center gap-1.5 backdrop-blur-md active:scale-95 transition-all cursor-pointer"
-            >
-              <Share2 className="w-3.5 h-3.5" />
-              <span>Share QR</span>
+              <SettingsIcon className="w-3.5 h-3.5" />
+              <span>Add Instagram Link in Settings</span>
             </button>
           </div>
-        </div>
+        )}
 
         {/* Caption */}
         <p className="text-[11px] text-zinc-300/80 font-medium leading-relaxed max-w-[240px] mt-3">
-          Scan with phone camera or Instagram app to visit <strong className="text-white">@aura.frame26</strong>
+          Scan with phone camera or Instagram app to visit <strong className="text-white">{handle}</strong>
         </p>
       </div>
     </div>

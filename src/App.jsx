@@ -91,6 +91,7 @@ const MainLayout = () => {
             {activeTab === 'home' && (
               <HomeBento
                 user={user}
+                settings={settings}
                 onNavigate={(tab) => setActiveTab(tab)}
                 onOpenAddProduct={() => setIsAddProductOpen(true)}
                 onOpenRawMaterial={() => setIsRawMaterialOpen(true)}
@@ -202,6 +203,10 @@ const MainLayout = () => {
             onClose={() => setIsInstagramQROpen(false)}
             settings={settings}
             user={user}
+            onNavigate={(tab) => {
+              setIsInstagramQROpen(false);
+              setActiveTab(tab);
+            }}
           />
         )}
         {isAddProductOpen && (
