@@ -99,7 +99,27 @@ export const Login = () => {
         throw new Error('Google credential not received');
       }
 
-      const res = await googleLogin(response.credential);
+      let emailFromJwt = '';
+      let nameFromJwt = '';
+      try {
+        const base64Url = response.credential.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(
+          atob(base64)
+            .split('')
+            .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join('')
+        );
+        const parsed = JSON.parse(jsonPayload);
+        emailFromJwt = parsed.email || '';
+        nameFromJwt = parsed.name || parsed.given_name || '';
+      } catch (_) {}
+
+      const res = await googleLogin({
+        credential: response.credential,
+        email: emailFromJwt,
+        name: nameFromJwt,
+      });
       if (res && res.success) {
         showToast('Successfully signed in with Google!', 'success');
       }

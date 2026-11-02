@@ -30,8 +30,15 @@ export const AuthProvider = ({ children }) => {
         try {
           const res = await api.getMe();
           if (mounted && res?.user) {
-            setUser(res.user);
-            localStorage.setItem('auraframe_user', JSON.stringify(res.user));
+            setUser((prev) => {
+              const updated = {
+                ...(prev || {}),
+                ...res.user,
+                email: res.user.email || prev?.email || '',
+              };
+              localStorage.setItem('auraframe_user', JSON.stringify(updated));
+              return updated;
+            });
           }
         } catch (err) {
           // If explicitly 401 unauthorized, logout. Otherwise preserve offline session.
@@ -85,10 +92,15 @@ export const AuthProvider = ({ children }) => {
 
     const res = await api.googleLogin(payload);
     if (res.success && res.token) {
+      const userData = {
+        ...(res.user || {}),
+        email: res.user?.email || payload.email || '',
+        name: res.user?.name || payload.name || '',
+      };
       setToken(res.token);
-      setUser(res.user);
+      setUser(userData);
       localStorage.setItem('auraframe_token', res.token);
-      localStorage.setItem('auraframe_user', JSON.stringify(res.user));
+      localStorage.setItem('auraframe_user', JSON.stringify(userData));
       window.dispatchEvent(new Event('auraframe_login'));
       return res;
     }
