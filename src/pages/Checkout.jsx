@@ -20,7 +20,6 @@ import { useCatalog } from '../context/CatalogContext';
 import { useToast } from '../context/ToastContext';
 import { formatCurrency, getProductInitial } from '../utils/formatters';
 import { freeGroupKey, normalizeFreeOffer, paidQtyOf } from '../utils/freeOffer';
-import { discountAmount, discountTiers } from '../utils/discounts';
 import { api } from '../api/client';
 import {
   isCharutaahEmail,
@@ -69,7 +68,6 @@ export const Checkout = ({
   const [custName, setCustName] = useState(customer?.name || '');
   const [custPhone, setCustPhone] = useState(customer?.phone || '');
   const [discountMode, setDiscountMode] = useState('flat'); // 'percent' | 'flat'
-  const [selectedChip, setSelectedChip] = useState(null);
   const [customDiscountVal, setCustomDiscountVal] = useState('');
 
   useEffect(() => {
@@ -86,16 +84,17 @@ export const Checkout = ({
   }, [cartItems.length, step]);
 
   useEffect(() => {
-    if (selectedChip == null) return;
-    const chip = discountTiers(discountMode).find((tier) => tier.id === selectedChip);
-    const next = discountAmount(discountMode, chip, subtotal);
-    if (!chip || next === 0) {
-      setSelectedChip(null);
-      setDiscount(0);
-      return;
+    if (!customDiscountVal) return;
+    const num = Math.max(0, Number(customDiscountVal) || 0);
+    if (discountMode === 'percent') {
+      const capped = Math.min(100, num);
+      const next = Math.round((subtotal * capped) / 100);
+      if (next !== discount) setDiscount(next);
+    } else {
+      const capped = Math.min(subtotal, num);
+      if (capped !== discount) setDiscount(capped);
     }
-    if (next !== discount) setDiscount(next);
-  }, [subtotal, discountMode, selectedChip, discount, setDiscount]);
+  }, [subtotal, discountMode, customDiscountVal, discount, setDiscount]);
 
   const getCartItemQty = (productId) => {
     const found = cartItems.find((item) => item.product._id === productId);
@@ -138,20 +137,29 @@ export const Checkout = ({
   const handleToggleDiscountMode = (mode) => {
     if (mode === discountMode) return;
     setDiscountMode(mode);
-    setSelectedChip(null);
     setCustomDiscountVal('');
     setDiscount(0);
   };
 
-  const handleSelectDiscountChip = (chip) => {
-    if (subtotal <= chip.minSubtotal) return;
-    if (selectedChip === chip.id) {
-      setSelectedChip(null);
+  const handleCustomDiscountChange = (val) => {
+    setCustomDiscountVal(val);
+    if (val === '') {
       setDiscount(0);
       return;
     }
-    setSelectedChip(chip.id);
-    setDiscount(discountAmount(discountMode, chip, subtotal));
+    const num = Math.max(0, Number(val) || 0);
+    if (discountMode === 'percent') {
+      const capped = Math.min(100, num);
+      setDiscount(Math.round((subtotal * capped) / 100));
+    } else {
+      const capped = Math.min(subtotal, num);
+      setDiscount(capped);
+    }
+  };
+
+  const handleClearDiscount = () => {
+    setCustomDiscountVal('');
+    setDiscount(0);
   };
 
   const handleFreeChip = (group, tier) => {
@@ -766,10 +774,11 @@ export const Checkout = ({
               <button
                 type="button"
                 onClick={() => handleToggleDiscountMode('percent')}
-                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${discountMode === 'percent'
+                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                  discountMode === 'percent'
                     ? 'bg-[#2a281c] border border-amber-400/80 text-amber-300'
                     : 'bg-[#151518] text-zinc-400 border border-zinc-800 hover:text-white'
-                  }`}
+                }`}
               >
                 <span>% Percent</span>
               </button>
@@ -777,95 +786,55 @@ export const Checkout = ({
               <button
                 type="button"
                 onClick={() => handleToggleDiscountMode('flat')}
-                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${discountMode === 'flat'
+                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                  discountMode === 'flat'
                     ? 'bg-[#2a281c] border border-amber-400/80 text-amber-300'
                     : 'bg-[#151518] text-zinc-400 border border-zinc-800 hover:text-white'
-                  }`}
+                }`}
               >
                 <Tag className="w-3.5 h-3.5" />
                 <span>₹ Flat</span>
               </button>
             </div>
 
-            {isCharutaah ? (
-              <div className="pt-1">
-                <div className="flex items-center gap-2 p-3 rounded-2xl bg-zinc-900 border border-zinc-800 focus-within:border-amber-400">
-                  <span className="text-sm font-bold text-amber-400">
-                    {discountMode === 'percent' ? '%' : '₹'}
-                  </span>
-                  <input
-                    type="number"
-                    min="0"
-                    max={discountMode === 'percent' ? 100 : subtotal}
-                    value={customDiscountVal}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setCustomDiscountVal(val);
-                      if (val === '') {
-                        setDiscount(0);
-                        return;
-                      }
-                      const num = Math.max(0, Number(val) || 0);
-                      if (discountMode === 'percent') {
-                        const capped = Math.min(100, num);
-                        setDiscount(Math.round((subtotal * capped) / 100));
-                      } else {
-                        const capped = Math.min(subtotal, num);
-                        setDiscount(capped);
-                      }
-                    }}
-                    placeholder={
-                      discountMode === 'percent'
-                        ? 'Enter discount percent (e.g. 10)'
-                        : 'Enter flat discount amount in ₹ (e.g. 50)'
-                    }
-                    className="flex-1 bg-transparent text-sm font-bold text-white focus:outline-none placeholder:text-zinc-600"
-                  />
-                  {customDiscountVal && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomDiscountVal('');
-                        setDiscount(0);
-                      }}
-                      className="text-xs text-zinc-500 hover:text-zinc-300 font-bold px-2 py-1 rounded-lg cursor-pointer"
-                    >
-                      Clear
-                    </button>
+            <div className="pt-1">
+              <div className="flex items-center gap-2 p-3 rounded-2xl bg-zinc-900 border border-zinc-800 focus-within:border-amber-400">
+                <span className="text-sm font-bold text-amber-400">
+                  {discountMode === 'percent' ? '%' : '₹'}
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  max={discountMode === 'percent' ? 100 : subtotal}
+                  value={customDiscountVal}
+                  onChange={(e) => handleCustomDiscountChange(e.target.value)}
+                  placeholder={
+                    discountMode === 'percent'
+                      ? 'Enter discount percent (e.g. 10)'
+                      : 'Enter flat discount amount in ₹ (e.g. 50)'
+                  }
+                  className="flex-1 bg-transparent text-sm font-bold text-white focus:outline-none placeholder:text-zinc-600"
+                />
+                {customDiscountVal && (
+                  <button
+                    type="button"
+                    onClick={handleClearDiscount}
+                    className="text-xs text-zinc-500 hover:text-zinc-300 font-bold px-2 py-1 rounded-lg cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              {Number(discount) > 0 && (
+                <p className="text-[11px] text-amber-400 font-bold pt-1.5 pl-1 flex items-center gap-1">
+                  <span>Discount applied:</span>
+                  <span>-₹{discount}</span>
+                  {discountMode === 'percent' && customDiscountVal && (
+                    <span className="text-zinc-400 font-normal">({customDiscountVal}%)</span>
                   )}
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 gap-2">
-                {discountTiers(discountMode).map((chip) => {
-                  const eligible = subtotal > chip.minSubtotal;
-                  const selected = selectedChip === chip.id;
-                  return (
-                    <button
-                      key={chip.id}
-                      type="button"
-                      disabled={!eligible}
-                      onClick={() => handleSelectDiscountChip(chip)}
-                      title={
-                        eligible
-                          ? `Apply ${chip.label}`
-                          : `Available above ₹${chip.minSubtotal}`
-                      }
-                      className={`py-3 px-2 rounded-xl text-xs font-black transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-35 ${
-                        selected
-                          ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
-                          : 'bg-[#151518] text-zinc-300 border border-zinc-800 hover:text-white'
-                      }`}
-                    >
-                      <span className="block">{chip.label}</span>
-                      <span className={`block text-[10px] font-semibold mt-0.5 ${selected ? 'text-zinc-800' : 'text-zinc-500'}`}>
-                        above ₹{chip.minSubtotal}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Action Button: Pay with UPI -> */}

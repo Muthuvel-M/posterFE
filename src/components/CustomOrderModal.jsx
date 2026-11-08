@@ -20,7 +20,6 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useModalAnimation } from '../hooks/useModalAnimation';
 import { formatCurrency } from '../utils/formatters';
-import { discountAmount, discountTiers } from '../utils/discounts';
 import { api } from '../api/client';
 import { isCharutaahEmail } from '../utils/businessConfig';
 
@@ -63,7 +62,6 @@ export const CustomOrderModal = ({
   const [costPrice, setCostPrice] = useState('');
   const [advancePaid, setAdvancePaid] = useState('');
   const [discountMode, setDiscountMode] = useState('flat');
-  const [selectedChip, setSelectedChip] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('upi'); // 'upi' | 'cash'
   const [customNotes, setCustomNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -279,11 +277,6 @@ export const CustomOrderModal = ({
       setCostPrice(order.pricing?.costPrice !== undefined ? String(order.pricing.costPrice) : '');
       setAdvancePaid(order.pricing?.advancePaid !== undefined ? String(order.pricing.advancePaid) : '');
       setDiscountMode(order.pricing?.discountMode === 'percent' ? 'percent' : 'flat');
-      setSelectedChip(
-        order.pricing?.discountChip !== undefined && order.pricing?.discountChip !== null
-          ? order.pricing.discountChip
-          : null
-      );
       if (order.pricing?.discount !== undefined && order.pricing?.discount !== null) {
         setCustomDiscountVal(String(order.pricing.discount));
       } else {
@@ -468,41 +461,20 @@ export const CustomOrderModal = ({
   const numericCost = Number(costPrice) || 0;
   const numericAdvance = Number(advancePaid) || 0;
   const quote = numericTotal > 0 ? numericTotal : calculatedTotal;
-  const activeChip = discountTiers(discountMode).find((tier) => tier.id === selectedChip) || null;
-  const orderDiscount = isCharutaah
-    ? customDiscountVal
-      ? discountMode === 'percent'
-        ? Math.round((quote * Math.min(100, Math.max(0, Number(customDiscountVal) || 0))) / 100)
-        : Math.min(quote, Math.max(0, Number(customDiscountVal) || 0))
-      : 0
-    : discountAmount(discountMode, activeChip, quote);
+  const orderDiscount = customDiscountVal
+    ? discountMode === 'percent'
+      ? Math.round((quote * Math.min(100, Math.max(0, Number(customDiscountVal) || 0))) / 100)
+      : Math.min(quote, Math.max(0, Number(customDiscountVal) || 0))
+    : 0;
   const payable = Math.max(0, quote - orderDiscount);
   const balanceDue = Math.max(0, payable - numericAdvance);
   const estimatedProfit = Math.max(0, payable - numericCost);
   const profitMargin = payable > 0 ? ((estimatedProfit / payable) * 100).toFixed(1) : 0;
 
-  useEffect(() => {
-    if (selectedChip == null) return;
-    const chip = discountTiers(discountMode).find((tier) => tier.id === selectedChip);
-    if (discountAmount(discountMode, chip, quote) === 0) {
-      setSelectedChip(null);
-    }
-  }, [selectedChip, discountMode, quote]);
-
   const handleToggleDiscountMode = (mode) => {
     if (mode === discountMode) return;
     setDiscountMode(mode);
-    setSelectedChip(null);
     setCustomDiscountVal('');
-  };
-
-  const handleSelectDiscountChip = (chip) => {
-    if (quote <= chip.minSubtotal) return;
-    if (selectedChip === chip.id) {
-      setSelectedChip(null);
-      return;
-    }
-    setSelectedChip(chip.id);
   };
 
   const totalPosterUnits = posterTiers.reduce((acc, c) => acc + (Number(c.count) || 0), 0);
@@ -652,7 +624,7 @@ export const CustomOrderModal = ({
           quotedPrice: quote,
           discount: orderDiscount,
           discountMode,
-          discountChip: isCharutaah ? null : selectedChip,
+          discountChip: null,
           totalPrice: payable,
           advancePaid: numericAdvance,
           balanceDue,
@@ -1415,57 +1387,41 @@ export const CustomOrderModal = ({
                   <span>₹ Flat</span>
                 </button>
               </div>
-              {isCharutaah ? (
-                <div className="space-y-1 pt-1">
-                  <div className="relative">
-                    {discountMode === 'percent' ? (
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-400">%</span>
-                    ) : (
-                      <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-amber-400" />
-                    )}
-                    <input
-                      type="number"
-                      min="0"
-                      max={discountMode === 'percent' ? 100 : quote}
-                      placeholder={discountMode === 'percent' ? 'Enter discount % (e.g. 10)' : 'Enter discount amount ₹ (e.g. 50)'}
-                      value={customDiscountVal}
-                      onChange={(e) => setCustomDiscountVal(e.target.value)}
-                      className="w-full pl-8 pr-3 py-2.5 rounded-xl bg-[#121215] border border-zinc-700/80 text-xs text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-400 font-mono font-bold"
-                    />
-                  </div>
-                  {Number(customDiscountVal) > 0 && (
-                    <p className="text-[10px] text-amber-400 font-semibold pl-1">
-                      Discount applied: -₹{orderDiscount}
-                    </p>
+              <div className="space-y-1 pt-1">
+                <div className="relative flex items-center">
+                  {discountMode === 'percent' ? (
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-400">%</span>
+                  ) : (
+                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-amber-400" />
+                  )}
+                  <input
+                    type="number"
+                    min="0"
+                    max={discountMode === 'percent' ? 100 : quote}
+                    placeholder={discountMode === 'percent' ? 'Enter discount % (e.g. 10)' : 'Enter discount amount ₹ (e.g. 50)'}
+                    value={customDiscountVal}
+                    onChange={(e) => setCustomDiscountVal(e.target.value)}
+                    className="w-full pl-8 pr-14 py-2.5 rounded-xl bg-[#121215] border border-zinc-700/80 text-xs text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-400 font-mono font-bold"
+                  />
+                  {customDiscountVal && (
+                    <button
+                      type="button"
+                      onClick={() => setCustomDiscountVal('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-zinc-500 hover:text-zinc-300 font-bold px-1.5 py-0.5 rounded cursor-pointer"
+                    >
+                      Clear
+                    </button>
                   )}
                 </div>
-              ) : (
-                <div className="grid grid-cols-3 gap-2">
-                  {discountTiers(discountMode).map((chip) => {
-                    const eligible = quote > chip.minSubtotal;
-                    const selected = selectedChip === chip.id;
-                    return (
-                      <button
-                        key={chip.id}
-                        type="button"
-                        disabled={!eligible}
-                        onClick={() => handleSelectDiscountChip(chip)}
-                        title={eligible ? `Apply ${chip.label}` : `Available above ₹${chip.minSubtotal}`}
-                        className={`py-3 px-2 rounded-xl text-xs font-black transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-35 ${
-                          selected
-                            ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
-                            : 'bg-[#121215] text-zinc-300 border border-zinc-800 hover:text-white'
-                        }`}
-                      >
-                        <span className="block">{chip.label}</span>
-                        <span className={`block text-[10px] font-semibold mt-0.5 ${selected ? 'text-zinc-800' : 'text-zinc-500'}`}>
-                          above ₹{chip.minSubtotal}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+                {Number(orderDiscount) > 0 && (
+                  <p className="text-[10px] text-amber-400 font-semibold pl-1">
+                    Discount applied: -₹{orderDiscount}
+                    {discountMode === 'percent' && customDiscountVal && (
+                      <span className="text-zinc-400 font-normal ml-1">({customDiscountVal}%)</span>
+                    )}
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Payment Method Switcher (Affects In-Hand Cash calculation) */}
