@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import confetti from 'canvas-confetti';
 import {
@@ -13,11 +13,13 @@ import {
   MessageCircle,
   ArrowRight,
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useCatalog } from '../context/CatalogContext';
 import { useToast } from '../context/ToastContext';
 import { useModalAnimation } from '../hooks/useModalAnimation';
 import { formatCurrency, generateWhatsAppReceiptUrl } from '../utils/formatters';
+import { getBusinessBranding } from '../utils/businessConfig';
 import { api } from '../api/client';
 
 const UPI_REGEX = /^[\w.\-]{2,}@[\w]{2,}$/;
@@ -38,26 +40,42 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
   const { showToast } = useToast();
   const { shouldRender, isClosing, requestClose } = useModalAnimation(isPayModalOpen, closePayModal);
 
+  const { user } = useAuth();
+  const branding = getBusinessBranding(user?.email, settings);
+
   const [activeSale, setActiveSale] = useState(null);
   const [completedSaleData, setCompletedSaleData] = useState(null);
   const [isSuccessView, setIsSuccessView] = useState(false);
-  const [loadingAction, setLoadingAction] = useState(null); // 'init' | 'mark_paid' | 'cash'
+  const [loadingAction, setLoadingAction] = useState(null); // 'mark_paid' | 'cash'
   const paymentCompletedRef = useRef(false);
   const initInFlightRef = useRef(false);
   const attemptIdRef = useRef(0);
+  const pendingSalePromiseRef = useRef(null);
+  const clientBillIdRef = useRef('');
 
-  const rawUpiId = settings?.upiId?.trim() || 'mmuthuvel126@ibl';
+  if (isPayModalOpen && !clientBillIdRef.current) {
+    clientBillIdRef.current = 'AF-' + Date.now().toString().slice(-6);
+  }
+
+  const rawUpiId = branding.upiId || settings?.upiId?.trim() || 'mmuthuvel126@ibl';
   const isUpiConfigured = Boolean(rawUpiId && UPI_REGEX.test(rawUpiId));
-  const businessName = settings?.businessName && !settings.businessName.includes('Muthuvel')
-    ? settings.businessName.trim()
-    : 'AuraFrame26';
+  const businessName = branding.businessName || settings?.businessName || 'AuraFrame26';
 
-  // Create a pending sale when the modal opens. Never wipe the success screen
-  // when catalog/stock updates re-render this component.
+  const orderId = activeSale?.saleNumber || clientBillIdRef.current || 'AF-1001';
+  const payable = Number(total) || 0;
+  const amountFormatted = payable.toFixed(2);
+
+  const directUpiUrl = useMemo(() => {
+    return `upi://pay?pa=${rawUpiId}&pn=${encodeURIComponent(businessName)}&am=${amountFormatted}&cu=INR&tn=${encodeURIComponent(orderId)}`;
+  }, [amountFormatted, orderId, rawUpiId, businessName]);
+
+  // Create a pending sale when the modal opens in parallel (optimistic UI).
   useEffect(() => {
     if (!isPayModalOpen) {
       paymentCompletedRef.current = false;
       initInFlightRef.current = false;
+      pendingSalePromiseRef.current = null;
+      clientBillIdRef.current = '';
       setActiveSale(null);
       setIsSuccessView(false);
       setCompletedSaleData(null);
@@ -82,55 +100,60 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
     }
   };
 
-  const initSaleFlow = async () => {
+  // Dispatches sale creation in the background without blocking instant QR rendering
+  const initSaleFlow = () => {
     if (paymentCompletedRef.current || initInFlightRef.current) return;
     const attemptId = ++attemptIdRef.current;
     const previousSaleId = activeSale?._id;
-    try {
-      initInFlightRef.current = true;
-      setLoadingAction('init');
+    initInFlightRef.current = true;
 
-      const payload = {
-        items: cartItems.map((item) => ({
-          productId: item.product._id,
-          qty: item.qty,
-          sellPrice: item.sellPrice,
-        })),
-        customerId: customer?._id || null,
-        newCustomer: !customer?._id && customer?.name ? customer : null,
-        discount: (Number(discount) || 0) + (Number(freeDiscount) || 0),
-        paymentMethod: 'upi',
-        paymentMode: 'direct',
-        paymentStatus: 'pending',
-        notes: '',
-      };
+    const payload = {
+      items: cartItems.map((item) => ({
+        productId: item.product._id,
+        qty: item.qty,
+        sellPrice: item.sellPrice,
+      })),
+      customerId: customer?._id || null,
+      newCustomer: !customer?._id && customer?.name ? customer : null,
+      discount: (Number(discount) || 0) + (Number(freeDiscount) || 0),
+      paymentMethod: 'upi',
+      paymentMode: 'direct',
+      paymentStatus: 'pending',
+      notes: '',
+      clientBillId: clientBillIdRef.current,
+    };
 
-      const res = await api.createSale(payload);
-      const abandoned = attemptId !== attemptIdRef.current || paymentCompletedRef.current;
-      if (abandoned) {
-        if (!paymentCompletedRef.current && res?.success && res.data?._id) {
-          await discardSaleIfUnpaid(res.data._id);
+    const promise = api
+      .createSale(payload)
+      .then(async (res) => {
+        const abandoned = attemptId !== attemptIdRef.current || paymentCompletedRef.current;
+        if (abandoned) {
+          if (!paymentCompletedRef.current && res?.success && res.data?._id) {
+            await discardSaleIfUnpaid(res.data._id);
+          }
+          return res;
         }
-        return;
-      }
-      if (res.success && res.data) {
-        setActiveSale(res.data);
-        if (previousSaleId && previousSaleId !== res.data._id) {
-          discardSaleIfUnpaid(previousSaleId);
+        if (res?.success && res.data) {
+          setActiveSale(res.data);
+          if (previousSaleId && previousSaleId !== res.data._id) {
+            discardSaleIfUnpaid(previousSaleId);
+          }
         }
-      }
-    } catch (err) {
-      if (!paymentCompletedRef.current && attemptId === attemptIdRef.current) {
-        showToast(err.message || 'Failed to initialize sale', 'error');
-      }
-    } finally {
-      if (attemptId === attemptIdRef.current) {
-        initInFlightRef.current = false;
-        if (!paymentCompletedRef.current) {
-          setLoadingAction(null);
+        return res;
+      })
+      .catch((err) => {
+        if (!paymentCompletedRef.current && attemptId === attemptIdRef.current) {
+          showToast(err.message || 'Background bill save failed', 'error');
         }
-      }
-    }
+        throw err;
+      })
+      .finally(() => {
+        if (attemptId === attemptIdRef.current) {
+          initInFlightRef.current = false;
+        }
+      });
+
+    pendingSalePromiseRef.current = promise;
   };
 
   const handleDismissUnpaid = () => {
@@ -144,6 +167,14 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
     requestClose();
     if (saleId) {
       discardSaleIfUnpaid(saleId);
+    } else if (pendingSalePromiseRef.current) {
+      pendingSalePromiseRef.current
+        .then((res) => {
+          if (res?.success && res.data?._id) {
+            discardSaleIfUnpaid(res.data._id);
+          }
+        })
+        .catch(() => {});
     }
   };
 
@@ -174,10 +205,26 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
 
   // "Payment Received" button handler: marks paid, decrements stock atomically
   const handlePaymentReceived = async () => {
-    if (!activeSale || paymentCompletedRef.current) return;
+    if (paymentCompletedRef.current) return;
     try {
       setLoadingAction('mark_paid');
-      const res = await api.markSalePaid(activeSale._id, 'upi');
+      let currentSale = activeSale;
+      if (!currentSale && pendingSalePromiseRef.current) {
+        try {
+          const res = await pendingSalePromiseRef.current;
+          if (res?.success && res.data) {
+            currentSale = res.data;
+          }
+        } catch (e) {
+          /* handled in initSaleFlow */
+        }
+      }
+      if (!currentSale?._id) {
+        showToast('Could not record payment: bill was not saved', 'error');
+        setLoadingAction(null);
+        return;
+      }
+      const res = await api.markSalePaid(currentSale._id, 'upi');
       if (res.success && res.data) {
         handlePaymentCompleted(res.data);
       } else {
@@ -192,10 +239,26 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
 
   // "Cash" payment handler: marks paid with cash method, decrements stock
   const handleCashPayment = async () => {
-    if (!activeSale || paymentCompletedRef.current) return;
+    if (paymentCompletedRef.current) return;
     try {
       setLoadingAction('cash');
-      const res = await api.markSalePaid(activeSale._id, 'cash');
+      let currentSale = activeSale;
+      if (!currentSale && pendingSalePromiseRef.current) {
+        try {
+          const res = await pendingSalePromiseRef.current;
+          if (res?.success && res.data) {
+            currentSale = res.data;
+          }
+        } catch (e) {
+          /* handled in initSaleFlow */
+        }
+      }
+      if (!currentSale?._id) {
+        showToast('Could not record cash payment: bill was not saved', 'error');
+        setLoadingAction(null);
+        return;
+      }
+      const res = await api.markSalePaid(currentSale._id, 'cash');
       if (res.success && res.data) {
         handlePaymentCompleted(res.data);
       } else {
@@ -253,10 +316,6 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
   };
 
   if (!shouldRender) return null;
-
-  const orderId = activeSale?.saleNumber || 'AF-1001';
-  const payable = Number(total) || 0;
-  const directUpiUrl = `upi://pay?pa=${rawUpiId}&pn=${encodeURIComponent(businessName)}&am=${payable.toFixed(2)}&cu=INR&tn=${orderId}`;
 
   // ─────────────────────────────────────────────────────────────
   // SUCCESS VIEW: Payment Received!
@@ -409,23 +468,16 @@ export const PayModal = ({ settings, onSaleSuccess, onNavigate }) => {
               </button>
             </div>
           ) : (
-            /* QR Code Container with size 260 and level M */
+            /* QR Code Container with instant client-side rendering (size 256, level M) */
             <div className="flex flex-col items-center w-full">
               <div className="p-4 rounded-3xl bg-white shadow-2xl flex flex-col items-center justify-center mb-3">
-                {loadingAction === 'init' ? (
-                  <div className="w-[260px] h-[260px] flex flex-col items-center justify-center gap-2">
-                    <div className="w-10 h-10 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-xs text-zinc-700 font-bold">Creating Order QR...</span>
-                  </div>
-                ) : (
-                  <QRCodeSVG
-                    value={directUpiUrl}
-                    size={260}
-                    level="M"
-                    includeMargin={false}
-                    className="rounded-2xl"
-                  />
-                )}
+                <QRCodeSVG
+                  value={directUpiUrl}
+                  size={256}
+                  level="M"
+                  includeMargin={false}
+                  className="rounded-2xl"
+                />
               </div>
 
               {/* Merchant & Order Details */}

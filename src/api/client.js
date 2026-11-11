@@ -114,8 +114,6 @@ export const api = {
     request('/payments/create-order', { method: 'POST', body: JSON.stringify(data) }),
   verifyRazorpayPayment: (data) =>
     request('/payments/verify', { method: 'POST', body: JSON.stringify(data) }),
-  createPaymentQR: (data) =>
-    request('/payments/qr', { method: 'POST', body: JSON.stringify(data) }),
 
 
   // Analytics
