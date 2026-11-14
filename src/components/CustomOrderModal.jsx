@@ -309,7 +309,6 @@ export const CustomOrderModal = ({
       setCostPrice('');
       setAdvancePaid('');
       setDiscountMode('flat');
-      setSelectedChip(null);
       setPaymentMethod('upi');
       setCustomNotes('');
 
