@@ -79,10 +79,10 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
         isCharutaah
           ? []
           : [
-              { size: 'A4', name: 'A4 Size', sellPrice: 40, costPrice: 15, stock: 25 },
-              { size: 'A5', name: 'A5 Size', sellPrice: 25, costPrice: 10, stock: 30 },
-              { size: 'A6', name: 'A6 Size', sellPrice: 20, costPrice: 8, stock: 40 },
-            ]
+            { size: 'A4', name: 'A4 Size', sellPrice: 40, costPrice: 15, stock: 25 },
+            { size: 'A5', name: 'A5 Size', sellPrice: 25, costPrice: 10, stock: 30 },
+            { size: 'A6', name: 'A6 Size', sellPrice: 20, costPrice: 8, stock: 40 },
+          ]
       );
       setComboTiers([]);
     }
@@ -209,10 +209,10 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
       const normalizedCategory = isCharutaah
         ? catLower
         : catLower.includes('frame')
-        ? 'frame'
-        : catLower.includes('sticker')
-          ? 'sticker'
-          : 'poster';
+          ? 'frame'
+          : catLower.includes('sticker')
+            ? 'sticker'
+            : 'poster';
 
       const payload = {
         name: name.trim(),
@@ -298,8 +298,8 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
               <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-[#1c1c22] border border-zinc-800 flex flex-col items-center justify-center shadow-inner">
                 <span
                   className={`font-black tracking-tight ${getProductInitial({ name, size, category, sellPrice }).length <= 2
-                      ? 'text-4xl'
-                      : 'text-3xl'
+                    ? 'text-4xl'
+                    : 'text-3xl'
                     } ${category.toLowerCase().includes('sticker')
                       ? 'text-fuchsia-300'
                       : category.toLowerCase().includes('frame')
@@ -328,8 +328,8 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
                 isCharutaah
                   ? "e.g. Handmade Sunflower, Flower Keychain, Hair Clip"
                   : category.toLowerCase().includes('sticker')
-                  ? "e.g. Anime Holographic Sticker, Chibi Character"
-                  : "e.g. Cyberpunk Synthwave, Minimalist Frame"
+                    ? "e.g. Anime Holographic Sticker, Chibi Character"
+                    : "e.g. Cyberpunk Synthwave, Minimalist Frame"
               }
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -351,11 +351,10 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
                       key={cat.id}
                       type="button"
                       onClick={() => handleCategorySelect(cat.name)}
-                      className={`py-2.5 px-2 rounded-2xl text-xs font-black border transition-all cursor-pointer text-center ${
-                        isSelected
-                          ? 'bg-amber-400 text-zinc-950 border-amber-400 shadow-md shadow-amber-400/20'
-                          : 'bg-[#1c1c22] text-zinc-400 border-zinc-800 hover:text-white'
-                      }`}
+                      className={`py-2.5 px-2 rounded-2xl text-xs font-black border transition-all cursor-pointer text-center ${isSelected
+                        ? 'bg-amber-400 text-zinc-950 border-amber-400 shadow-md shadow-amber-400/20'
+                        : 'bg-[#1c1c22] text-zinc-400 border-zinc-800 hover:text-white'
+                        }`}
                     >
                       {cat.label}
                     </button>
@@ -368,8 +367,8 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
                   type="button"
                   onClick={() => handleCategorySelect('Poster')}
                   className={`py-3 px-2 rounded-2xl text-xs font-black border transition-all cursor-pointer ${category.toLowerCase().includes('poster')
-                      ? 'bg-amber-400 text-zinc-950 border-amber-400 shadow-md shadow-amber-400/20'
-                      : 'bg-[#1c1c22] text-zinc-400 border-zinc-800 hover:text-white'
+                    ? 'bg-amber-400 text-zinc-950 border-amber-400 shadow-md shadow-amber-400/20'
+                    : 'bg-[#1c1c22] text-zinc-400 border-zinc-800 hover:text-white'
                     }`}
                 >
                   🖼️ Poster
@@ -379,8 +378,8 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
                   type="button"
                   onClick={() => handleCategorySelect('Frame')}
                   className={`py-3 px-2 rounded-2xl text-xs font-black border transition-all cursor-pointer ${category.toLowerCase().includes('frame')
-                      ? 'bg-amber-400 text-zinc-950 border-amber-400 shadow-md shadow-amber-400/20'
-                      : 'bg-[#1c1c22] text-zinc-400 border-zinc-800 hover:text-white'
+                    ? 'bg-amber-400 text-zinc-950 border-amber-400 shadow-md shadow-amber-400/20'
+                    : 'bg-[#1c1c22] text-zinc-400 border-zinc-800 hover:text-white'
                     }`}
                 >
                   🔲 Frame
@@ -390,8 +389,8 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
                   type="button"
                   onClick={() => handleCategorySelect('Sticker')}
                   className={`py-3 px-2 rounded-2xl text-xs font-black border transition-all cursor-pointer ${category.toLowerCase().includes('sticker')
-                      ? 'bg-amber-400 text-zinc-950 border-amber-400 shadow-md shadow-amber-400/20'
-                      : 'bg-[#1c1c22] text-zinc-400 border-zinc-800 hover:text-white'
+                    ? 'bg-amber-400 text-zinc-950 border-amber-400 shadow-md shadow-amber-400/20'
+                    : 'bg-[#1c1c22] text-zinc-400 border-zinc-800 hover:text-white'
                     }`}
                 >
                   ✨ Sticker
@@ -411,8 +410,8 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
                   type="button"
                   onClick={() => handleSelectStickerPreset(15)}
                   className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${Number(sellPrice) === 15
-                      ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
-                      : 'bg-zinc-900 border border-zinc-700 text-zinc-300 hover:text-white'
+                    ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
+                    : 'bg-zinc-900 border border-zinc-700 text-zinc-300 hover:text-white'
                     }`}
                 >
                   <span>✨ ₹15 Sticker</span>
@@ -422,8 +421,8 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
                   type="button"
                   onClick={() => handleSelectStickerPreset(30)}
                   className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${Number(sellPrice) === 30
-                      ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
-                      : 'bg-zinc-900 border border-zinc-700 text-zinc-300 hover:text-white'
+                    ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
+                    : 'bg-zinc-900 border border-zinc-700 text-zinc-300 hover:text-white'
                     }`}
                 >
                   <span>🌟 ₹30 Sticker</span>
@@ -444,15 +443,15 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
               >
                 {(category.toLowerCase().includes('frame')
                   ? ['A4', 'A5']
-                  : ['A4', 'A5', 'A6']
+                  : ['A3', 'A4', 'A5', 'A6', 'Phone', 'split']
                 ).map((s) => (
                   <button
                     key={s}
                     type="button"
                     onClick={() => handleSelectSize(s)}
                     className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer ${size === s
-                        ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
-                        : 'bg-zinc-900 border border-zinc-700 text-zinc-300 hover:text-white'
+                      ? 'bg-amber-400 text-zinc-950 shadow-md shadow-amber-400/20'
+                      : 'bg-zinc-900 border border-zinc-700 text-zinc-300 hover:text-white'
                       }`}
                   >
                     {s}
@@ -657,11 +656,10 @@ export const ProductModal = ({ isOpen, onClose, product, onSaveSuccess }) => {
             type="button"
             onClick={handleSubmit}
             disabled={submitting || !isFormValid}
-            className={`w-full py-4 px-6 rounded-2xl font-black text-base shadow-xl transition-all ${
-              isFormValid
-                ? 'bg-amber-400 hover:bg-amber-300 text-zinc-950 shadow-amber-400/25 active:scale-[0.98] cursor-pointer'
-                : 'bg-zinc-800 text-zinc-500 border border-zinc-700/60 cursor-not-allowed opacity-60'
-            }`}
+            className={`w-full py-4 px-6 rounded-2xl font-black text-base shadow-xl transition-all ${isFormValid
+              ? 'bg-amber-400 hover:bg-amber-300 text-zinc-950 shadow-amber-400/25 active:scale-[0.98] cursor-pointer'
+              : 'bg-zinc-800 text-zinc-500 border border-zinc-700/60 cursor-not-allowed opacity-60'
+              }`}
           >
             {submitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Add Product'}
           </button>
